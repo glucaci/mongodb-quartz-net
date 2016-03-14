@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Common.Logging;
-using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Models;
@@ -17,6 +16,7 @@ namespace Quartz.Spi.MongoDbJobStore
         private IMongoDatabase _database;
         private SchedulerRepository _schedulerRepository;
         private JobDetailRepository _jobDetailRepository;
+        private TriggerRepository _triggerRepository;
 
         public bool SupportsPersistence { get; }
         public long EstimatedTimeToReleaseAndAcquireTrigger { get; }
@@ -29,19 +29,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         static MongoDbJobStore()
         {
-            BsonClassMap.RegisterClassMap<JobKey>(map =>
-            {
-                map.AutoMap();
-                map.MapCreator(jobKey => new JobKey(jobKey.Name));
-                map.MapCreator(jobKey => new JobKey(jobKey.Name, jobKey.Group));
-            });
-
-            BsonClassMap.RegisterClassMap<TriggerKey>(map =>
-            {
-                map.AutoMap();
-                map.MapCreator(triggerKey => new TriggerKey(triggerKey.Name));
-                map.MapCreator(triggerKey => new TriggerKey(triggerKey.Name, triggerKey.Group));
-            });
+            JobStoreClassMap.RegisterClassMaps();
         }
 
         public void Initialize(ITypeLoadHelper loadHelper, ISchedulerSignaler signaler)
@@ -52,6 +40,7 @@ namespace Quartz.Spi.MongoDbJobStore
             _database = _client.GetDatabase(url.DatabaseName);
             _schedulerRepository = new SchedulerRepository(_database, InstanceName);
             _jobDetailRepository = new JobDetailRepository(_database, InstanceName);
+            _triggerRepository = new TriggerRepository(_database, InstanceName);
         }
 
         public void SchedulerStarted()

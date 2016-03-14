@@ -1,22 +1,20 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-using Quartz.Simpl;
+﻿using System;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
 {
     internal class JobDetail
     {
+        public JobDetail()
+        {
+        }
+
         public JobDetail(IJobDetail jobDetail)
         {
             Key = jobDetail.Key;
             Description = jobDetail.Description;
-            JobType = $"{jobDetail.JobType.FullName}, {jobDetail.JobType.Assembly.GetName().Name}";
-
-            if (jobDetail.JobDataMap.Count > 0)
-            {
-                var objSerializer = new DefaultObjectSerializer();
-                JobDataMap = objSerializer.Serialize(jobDetail.JobDataMap);
-            }
-
+            JobType = jobDetail.JobType;
+            JobDataMap = jobDetail.JobDataMap;
             Durable = jobDetail.Durable;
             PersistJobDataAfterExecution = jobDetail.PersistJobDataAfterExecution;
             ConcurrentExecutionDisallowed = jobDetail.ConcurrentExecutionDisallowed;
@@ -28,10 +26,9 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public string Description { get; set; }
 
-        public string JobType { get; set; }
+        public Type JobType { get; set; }
 
-        [BsonElement("JobDataMap")]
-        private byte[] JobDataMap { get; set; }
+        public JobDataMap JobDataMap { get; set; }
 
         public bool Durable { get; set; }
 

@@ -17,10 +17,28 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         Deleted
     }
 
-    internal class Trigger
+    [BsonDiscriminator(RootClass = true)]
+    [BsonKnownTypes(typeof (CronTrigger), typeof (SimpleTrigger), typeof (CalendarIntervalTrigger),
+        typeof (DailyTimeIntervalTrigger))]
+    internal abstract class Trigger
     {
-        public Trigger(IOperableTrigger trigger)
+        protected Trigger()
         {
+        }
+
+        protected Trigger(ITrigger trigger, TriggerState state)
+        {
+            Key = trigger.Key;
+            JobKey = trigger.JobKey;
+            Description = trigger.Description;
+            NextFireTime = trigger.GetNextFireTimeUtc();
+            PreviousFireTime = trigger.GetPreviousFireTimeUtc();
+            State = state;
+            StartTime = trigger.StartTimeUtc;
+            EndTime = trigger.EndTimeUtc;
+            CalendarName = trigger.CalendarName;
+            MisfireInstruction = trigger.MisfireInstruction;
+            Priority = trigger.Priority;
         }
 
         [BsonId]
@@ -39,7 +57,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public DateTimeOffset StartTime { get; set; }
 
-        public DateTimeOffset EndTime { get; set; }
+        public DateTimeOffset? EndTime { get; set; }
 
         public string CalendarName { get; set; }
 
@@ -47,8 +65,8 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public int Priority { get; set; }
 
-        [BsonElement("JobDataMap")]
-        private byte[] JobDataMap { get; set; }
+        public string Type { get; set; }
 
+        public JobDataMap JobDataMap { get; set; }
     }
 }
