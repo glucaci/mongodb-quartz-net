@@ -14,13 +14,14 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private IMongoClient _client;
         private IMongoDatabase _database;
+        private LockManager _lockManager;
         private SchedulerRepository _schedulerRepository;
         private JobDetailRepository _jobDetailRepository;
         private TriggerRepository _triggerRepository;
 
-        public bool SupportsPersistence { get; }
-        public long EstimatedTimeToReleaseAndAcquireTrigger { get; }
-        public bool Clustered { get; }
+        public bool SupportsPersistence => true;
+        public long EstimatedTimeToReleaseAndAcquireTrigger => 200;
+        public bool Clustered => true;
         public string InstanceId { get; set; }
         public string InstanceName { get; set; }
         public int ThreadPoolSize { get; set; }
@@ -38,6 +39,7 @@ namespace Quartz.Spi.MongoDbJobStore
             var url = new MongoUrl(ConnectionString);
             _client = new MongoClient(ConnectionString);
             _database = _client.GetDatabase(url.DatabaseName);
+            _lockManager = new LockManager(_database, InstanceName);
             _schedulerRepository = new SchedulerRepository(_database, InstanceName);
             _jobDetailRepository = new JobDetailRepository(_database, InstanceName);
             _triggerRepository = new TriggerRepository(_database, InstanceName);
@@ -90,17 +92,20 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void StoreJob(IJobDetail newJob, bool replaceExisting)
         {
-            if (replaceExisting)
+            using (_lockManager.AcquireLock(Lock.TriggerAccess, InstanceId))
             {
-                var result = _jobDetailRepository.UpdateJobDetail(new JobDetail(newJob), true);
-                if (result == 0)
+                if (replaceExisting)
                 {
-                    throw new JobPersistenceException("Could not store job");
+                    var result = _jobDetailRepository.UpdateJobDetail(new JobDetail(newJob), true);
+                    if (result == 0)
+                    {
+                        throw new JobPersistenceException("Could not store job");
+                    }
                 }
-            }
-            else
-            {
-                _jobDetailRepository.AddJobDetail(new JobDetail(newJob));
+                else
+                {
+                    _jobDetailRepository.AddJobDetail(new JobDetail(newJob));
+                }
             }
         }
 
@@ -127,7 +132,24 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void StoreTrigger(IOperableTrigger newTrigger, bool replaceExisting)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(Lock.TriggerAccess, InstanceId))
+            {
+                StoreTrigger(newTrigger, null, replaceExisting, Models.TriggerState.Waiting, false, false);
+            }
+        }
+
+        private void StoreTrigger(IOperableTrigger newTrigger, IJobDetail job, bool replaceExisting, Models.TriggerState state, bool forceState, bool recovering)
+        {
+            var existingTrigger = _triggerRepository.TriggerExists(newTrigger.Key);
+
+            if (existingTrigger && !replaceExisting)
+            {
+                throw new ObjectAlreadyExistsException(newTrigger);
+            }
+
+            if (!forceState)
+            {
+            }
         }
 
         public bool RemoveTrigger(TriggerKey triggerKey)

@@ -9,5 +9,10 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             : base(database, collectionPrefix)
         {
         }
+
+        public bool TriggerExists(TriggerKey triggerKey)
+        {
+            return Collection.Find(trigger => trigger.Key == triggerKey).Any();
+        }
     }
 }

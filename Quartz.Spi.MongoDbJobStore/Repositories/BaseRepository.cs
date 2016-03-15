@@ -28,6 +28,8 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         protected IndexKeysDefinitionBuilder<TDocument> IndexBuilder => Builders<TDocument>.IndexKeys;
 
+        public virtual void EnsureIndex() { }
+
         /// <summary>
         ///     Determines the collectionname
         /// </summary>
