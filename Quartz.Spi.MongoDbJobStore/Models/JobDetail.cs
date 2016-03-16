@@ -1,5 +1,7 @@
 ﻿using System;
 using MongoDB.Bson.Serialization.Attributes;
+using Quartz.Impl;
+using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
 {
@@ -9,9 +11,9 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        public JobDetail(IJobDetail jobDetail)
+        public JobDetail(IJobDetail jobDetail, string instanceName)
         {
-            Key = jobDetail.Key;
+            Id = new JobDetailId(jobDetail.Key, instanceName);
             Description = jobDetail.Description;
             JobType = jobDetail.JobType;
             JobDataMap = jobDetail.JobDataMap;
@@ -22,7 +24,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         }
 
         [BsonId]
-        public JobKey Key { get; set; }
+        public JobDetailId Id { get; set; }
 
         public string Description { get; set; }
 
@@ -37,5 +39,18 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public bool ConcurrentExecutionDisallowed { get; set; }
 
         public bool RequestsRecovery { get; set; }
+
+        public IJobDetail GetJobDetail()
+        {
+            // The missing properties are figured out at runtime from the job type attributes
+            return new JobDetailImpl()
+            {
+                Description = Description,
+                JobType = JobType,
+                JobDataMap = JobDataMap,
+                Durable = Durable,
+                RequestsRecovery = RequestsRecovery
+            };
+        }
     }
 }

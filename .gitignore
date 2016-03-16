@@ -2,3 +2,4 @@
 Quartz.Spi.MongoDbJobStore/obj/
 packages/
 *.user
+Quartz.Spi.MongoDbJobStore/bin/

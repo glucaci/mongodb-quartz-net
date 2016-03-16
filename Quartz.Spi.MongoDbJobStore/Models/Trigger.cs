@@ -1,6 +1,8 @@
 ﻿using System;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Quartz.Impl.Triggers;
+using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
 {
@@ -36,11 +38,11 @@ namespace Quartz.Spi.MongoDbJobStore.Models
             };
             JobKey = trigger.JobKey;
             Description = trigger.Description;
-            NextFireTime = trigger.GetNextFireTimeUtc();
-            PreviousFireTime = trigger.GetPreviousFireTimeUtc();
+            NextFireTime = trigger.GetNextFireTimeUtc()?.UtcDateTime;
+            PreviousFireTime = trigger.GetPreviousFireTimeUtc()?.UtcDateTime;
             State = state;
-            StartTime = trigger.StartTimeUtc;
-            EndTime = trigger.EndTimeUtc;
+            StartTime = trigger.StartTimeUtc.UtcDateTime;
+            EndTime = trigger.EndTimeUtc?.UtcDateTime;
             CalendarName = trigger.CalendarName;
             MisfireInstruction = trigger.MisfireInstruction;
             Priority = trigger.Priority;
@@ -53,16 +55,20 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public string Description { get; set; }
 
-        public DateTimeOffset? NextFireTime { get; set; }
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? NextFireTime { get; set; }
 
-        public DateTimeOffset? PreviousFireTime { get; set; }
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? PreviousFireTime { get; set; }
 
         [BsonRepresentation(BsonType.String)]
         public TriggerState State { get; set; }
 
-        public DateTimeOffset StartTime { get; set; }
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime StartTime { get; set; }
 
-        public DateTimeOffset? EndTime { get; set; }
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? EndTime { get; set; }
 
         public string CalendarName { get; set; }
 
@@ -73,21 +79,22 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public string Type { get; set; }
 
         public JobDataMap JobDataMap { get; set; }
-    }
 
-    internal class TriggerId
-    {
-        public TriggerId() { }
+        public abstract ITrigger GetTrigger();
 
-        public TriggerId(TriggerKey triggerKey, string instanceName)
+        protected void FillTrigger(AbstractTrigger trigger)
         {
-            InstanceName = instanceName;
-            Name = triggerKey.Name;
-            Group = triggerKey.Group;
+            trigger.Key = new TriggerKey(Id.Name, Id.Group);
+            trigger.JobKey = JobKey;
+            trigger.CalendarName = CalendarName;
+            trigger.Description = Description;
+            trigger.JobDataMap = JobDataMap;
+            trigger.MisfireInstruction = MisfireInstruction;
+            trigger.EndTimeUtc = EndTime;
+            trigger.StartTimeUtc = StartTime;
+            trigger.Priority = Priority;
+            trigger.SetNextFireTimeUtc(NextFireTime);
+            trigger.SetPreviousFireTimeUtc(PreviousFireTime);
         }
-
-        public string InstanceName { get; set; }
-        public string Name { get; set; }
-        public string Group { get; set; }
     }
 }

@@ -5,8 +5,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 {
     internal abstract class BaseRepository<TDocument>
     {
-        protected BaseRepository(IMongoDatabase database, string collectionPrefix = null)
+        protected string InstanceName { get; }
+
+        protected BaseRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
         {
+            InstanceName = instanceName;
             var collectionName = GetCollectionName();
             if (!string.IsNullOrEmpty(collectionPrefix))
             {
@@ -29,6 +32,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         protected IndexKeysDefinitionBuilder<TDocument> IndexBuilder => Builders<TDocument>.IndexKeys;
 
         public virtual void EnsureIndex() { }
+
+        public void DeleteAll()
+        {
+            Collection.DeleteMany(FilterBuilder.Empty);
+        }
 
         /// <summary>
         ///     Determines the collectionname

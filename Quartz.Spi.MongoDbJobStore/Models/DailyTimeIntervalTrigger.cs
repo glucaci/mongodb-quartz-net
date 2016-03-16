@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Quartz.Impl.Triggers;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
 {
@@ -40,5 +41,22 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public int TimesTriggered { get; set; }
 
         public string TimeZone { get; set; }
+
+        public override ITrigger GetTrigger()
+        {
+            var trigger = new DailyTimeIntervalTriggerImpl()
+            {
+                RepeatCount = RepeatCount,
+                RepeatIntervalUnit = RepeatIntervalUnit,
+                RepeatInterval = RepeatInterval,
+                StartTimeOfDay = StartTimeOfDay,
+                EndTimeOfDay = EndTimeOfDay,
+                DaysOfWeek = new Collection.HashSet<DayOfWeek>(DaysOfWeek),
+                TimesTriggered = TimesTriggered,
+                TimeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZone)
+            };
+            FillTrigger(trigger);
+            return trigger;
+        }
     }
 }

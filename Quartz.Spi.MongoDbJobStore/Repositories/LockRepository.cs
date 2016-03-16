@@ -10,13 +10,14 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
     {
         private static readonly ILog Log = LogManager.GetLogger<LockRepository>();
 
-        public LockRepository(IMongoDatabase database, string collectionPrefix = null)
-            : base(database, collectionPrefix)
+        public LockRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
+            : base(database, instanceName, collectionPrefix)
         {
         }
 
-        public bool TryAcquireLock(LockId lockId, string instanceId)
+        public bool TryAcquireLock(LockType lockType, string instanceId)
         {
+            var lockId = new LockId(lockType, InstanceName);
             Log.Trace($"Trying to acquire lock {lockId} on {instanceId}");
             try
             {
@@ -36,8 +37,9 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             }
         }
 
-        public bool ReleaseLock(LockId lockId, string instanceId)
+        public bool ReleaseLock(LockType lockType, string instanceId)
         {
+            var lockId = new LockId(lockType, InstanceName);
             Log.Trace($"Releasing lock {lockId} on {instanceId}");
             var result =
                 Collection.DeleteOne(

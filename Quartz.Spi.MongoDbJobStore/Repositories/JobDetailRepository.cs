@@ -1,24 +1,30 @@
 ﻿using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
+using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Repositories
 {
-    [CollectionName("jobDetails")]
+    [CollectionName("jobs")]
     internal class JobDetailRepository : BaseRepository<JobDetail>
     {
-        public JobDetailRepository(IMongoDatabase database, string collectionPrefix = null)
-            : base(database, collectionPrefix)
+        public JobDetailRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
+            : base(database, instanceName, collectionPrefix)
         {
         }
 
-        public void AddJobDetail(JobDetail jobDetail)
+        public JobDetail GetJob(JobKey jobKey)
+        {
+            return Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).FirstOrDefault();
+        }
+
+        public void AddJob(JobDetail jobDetail)
         {
             Collection.InsertOne(jobDetail);
         }
 
-        public long UpdateJobDetail(JobDetail jobDetail, bool upsert)
+        public long UpdateJob(JobDetail jobDetail, bool upsert)
         {
-            var result = Collection.ReplaceOne(detail => detail.Key == jobDetail.Key,
+            var result = Collection.ReplaceOne(detail => detail.Id == jobDetail.Id,
                 jobDetail,
                 new UpdateOptions
                 {
@@ -27,9 +33,20 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             return result.ModifiedCount;
         }
 
-        public bool JobExists(JobKey key)
+        public long DeleteJob(JobKey key)
         {
-            return Collection.Find(detail => detail.Key == key).Any();
+            var result = Collection.DeleteOne(FilterBuilder.Where(job => job.Id == new JobDetailId(key, InstanceName)));
+            return result.DeletedCount;
+        }
+
+        public bool JobExists(JobKey jobKey)
+        {
+            return Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).Any();
+        }
+
+        public long GetCount()
+        {
+            return Collection.Find(detail => detail.Id.InstanceName == InstanceName).Count();
         }
     }
 }

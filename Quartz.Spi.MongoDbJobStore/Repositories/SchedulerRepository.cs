@@ -1,13 +1,14 @@
 ﻿using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
+using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Repositories
 {
     [CollectionName("schedulers")]
     internal class SchedulerRepository : BaseRepository<Scheduler>
     {
-        public SchedulerRepository(IMongoDatabase database, string collectionPrefix = null)
-            : base(database, collectionPrefix)
+        public SchedulerRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
+            : base(database, instanceName, collectionPrefix)
         {
         }
 
@@ -20,14 +21,14 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 });
         }
 
-        public void DeleteScheduler(SchedulerId schedulerId)
+        public void DeleteScheduler(string id)
         {
-            Collection.DeleteOne(sch => sch.Id == schedulerId);
+            Collection.DeleteOne(sch => sch.Id == new SchedulerId(id, InstanceName));
         }
 
-        public void UpdateState(SchedulerId schedulerId, SchedulerState state)
+        public void UpdateState(string id, SchedulerState state)
         {
-            Collection.UpdateOne(sch => sch.Id == schedulerId,
+            Collection.UpdateOne(sch => sch.Id == new SchedulerId(id, InstanceName),
                 UpdateBuilder.Set(sch => sch.State, state));
         }
     }

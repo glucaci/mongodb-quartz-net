@@ -1,5 +1,7 @@
-﻿using MongoDB.Bson;
+﻿using System;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Quartz.Impl.Triggers;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
 {
@@ -32,5 +34,20 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public bool PreserveHourOfDayAcrossDaylightSavings { get; set; }
 
         public bool SkipDayIfHourDoesNotExist { get; set; }
+
+        public override ITrigger GetTrigger()
+        {
+            var trigger = new CalendarIntervalTriggerImpl()
+            {
+                RepeatIntervalUnit = RepeatIntervalUnit,
+                RepeatInterval = RepeatInterval,
+                TimesTriggered = TimesTriggered,
+                TimeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZone),
+                PreserveHourOfDayAcrossDaylightSavings = PreserveHourOfDayAcrossDaylightSavings,
+                SkipDayIfHourDoesNotExist = SkipDayIfHourDoesNotExist
+            };
+            FillTrigger(trigger);
+            return trigger;
+        }
     }
 }

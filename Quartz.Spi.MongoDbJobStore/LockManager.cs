@@ -8,6 +8,10 @@ using Quartz.Spi.MongoDbJobStore.Repositories;
 
 namespace Quartz.Spi.MongoDbJobStore
 {
+    /// <summary>
+    /// Implements a simple distributed lock on top of MongoDB. It is not a reentrant lock so you can't 
+    /// acquire the lock more than once in the same thread of execution.
+    /// </summary>
     internal class LockManager : IDisposable
     {
         private static readonly TimeSpan SleepThreshold = TimeSpan.FromMilliseconds(1000);
@@ -16,14 +20,14 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private readonly LockRepository _lockRepository;
 
-        private readonly ConcurrentDictionary<string, LockInstance> _pendingLocks =
-            new ConcurrentDictionary<string, LockInstance>();
+        private readonly ConcurrentDictionary<LockType, LockInstance> _pendingLocks =
+            new ConcurrentDictionary<LockType, LockInstance>();
 
         private bool _disposed;
 
-        public LockManager(IMongoDatabase database, string instanceId)
+        public LockManager(IMongoDatabase database, string instanceName, string collectionPrefix)
         {
-            _lockRepository = new LockRepository(database, instanceId);
+            _lockRepository = new LockRepository(database, instanceName, collectionPrefix);
         }
 
         public void Dispose()
@@ -38,14 +42,14 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public IDisposable AcquireLock(LockId lockId, string instanceId)
+        public IDisposable AcquireLock(LockType lockType, string instanceId)
         {
             while (true)
             {
                 EnsureObjectNotDisposed();
-                if (_lockRepository.TryAcquireLock(lockId, instanceId))
+                if (_lockRepository.TryAcquireLock(lockType, instanceId))
                 {
-                    var lockInstance = new LockInstance(this, lockId, instanceId);
+                    var lockInstance = new LockInstance(this, lockType, instanceId);
                     AddLock(lockInstance);
                     return lockInstance;
                 }
@@ -63,18 +67,18 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private void AddLock(LockInstance lockInstance)
         {
-            if (!_pendingLocks.TryAdd(lockInstance.LockId.ToString(), lockInstance))
+            if (!_pendingLocks.TryAdd(lockInstance.LockType, lockInstance))
             {
-                throw new Exception($"Unable to add lock instance for lock {lockInstance.LockId} on {lockInstance.InstanceId}");
+                throw new Exception($"Unable to add lock instance for lock {lockInstance.LockType} on {lockInstance.InstanceId}");
             }
         }
 
         private void LockReleased(LockInstance lockInstance)
         {
             LockInstance releasedLock;
-            if (!_pendingLocks.TryRemove(lockInstance.LockId.ToString(), out releasedLock))
+            if (!_pendingLocks.TryRemove(lockInstance.LockType, out releasedLock))
             {
-                Log.Warn($"Unable to remove pending lock {lockInstance.LockId} on {lockInstance.InstanceId}");
+                Log.Warn($"Unable to remove pending lock {lockInstance.LockType} on {lockInstance.InstanceId}");
             }
         }
 
@@ -85,27 +89,27 @@ namespace Quartz.Spi.MongoDbJobStore
 
             private bool _disposed;
 
-            public LockInstance(LockManager lockManager, LockId lockId, string instanceId)
+            public LockInstance(LockManager lockManager, LockType lockType, string instanceId)
             {
                 _lockManager = lockManager;
-                LockId = lockId;
+                LockType = lockType;
                 InstanceId = instanceId;
                 _lockRepository = lockManager._lockRepository;
             }
 
             public string InstanceId { get; }
 
-            public LockId LockId { get; }
+            public LockType LockType { get; }
 
             public void Dispose()
             {
                 if (_disposed)
                 {
                     throw new ObjectDisposedException(nameof(LockInstance),
-                        $"This lock {LockId} for {InstanceId} has already been disposed");
+                        $"This lock {LockType} for {InstanceId} has already been disposed");
                 }
 
-                _lockRepository.ReleaseLock(LockId, InstanceId);
+                _lockRepository.ReleaseLock(LockType, InstanceId);
                 _lockManager.LockReleased(this);
                 _disposed = true;
             }
