@@ -3,11 +3,12 @@ using System.Collections.Concurrent;
 using System.Threading;
 using Common.Logging;
 using MongoDB.Driver;
+using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Repositories;
 
 namespace Quartz.Spi.MongoDbJobStore
 {
-    public class LockManager : IDisposable
+    internal class LockManager : IDisposable
     {
         private static readonly TimeSpan SleepThreshold = TimeSpan.FromMilliseconds(1000);
 
@@ -37,14 +38,14 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public IDisposable AcquireLock(string lockName, string instanceId)
+        public IDisposable AcquireLock(LockId lockId, string instanceId)
         {
             while (true)
             {
                 EnsureObjectNotDisposed();
-                if (_lockRepository.TryAcquireLock(lockName, instanceId))
+                if (_lockRepository.TryAcquireLock(lockId, instanceId))
                 {
-                    var lockInstance = new LockInstance(this, lockName, instanceId);
+                    var lockInstance = new LockInstance(this, lockId, instanceId);
                     AddLock(lockInstance);
                     return lockInstance;
                 }
@@ -62,18 +63,18 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private void AddLock(LockInstance lockInstance)
         {
-            if (!_pendingLocks.TryAdd(lockInstance.LockName, lockInstance))
+            if (!_pendingLocks.TryAdd(lockInstance.LockId.ToString(), lockInstance))
             {
-                throw new Exception($"Unable to add lock instance for lock {lockInstance.LockName} on {lockInstance.InstanceId}");
+                throw new Exception($"Unable to add lock instance for lock {lockInstance.LockId} on {lockInstance.InstanceId}");
             }
         }
 
         private void LockReleased(LockInstance lockInstance)
         {
             LockInstance releasedLock;
-            if (!_pendingLocks.TryRemove(lockInstance.LockName, out releasedLock))
+            if (!_pendingLocks.TryRemove(lockInstance.LockId.ToString(), out releasedLock))
             {
-                Log.Warn($"Unable to remove pending lock {lockInstance.LockName} on {lockInstance.InstanceId}");
+                Log.Warn($"Unable to remove pending lock {lockInstance.LockId} on {lockInstance.InstanceId}");
             }
         }
 
@@ -84,27 +85,27 @@ namespace Quartz.Spi.MongoDbJobStore
 
             private bool _disposed;
 
-            public LockInstance(LockManager lockManager, string lockName, string instanceId)
+            public LockInstance(LockManager lockManager, LockId lockId, string instanceId)
             {
                 _lockManager = lockManager;
-                LockName = lockName;
+                LockId = lockId;
                 InstanceId = instanceId;
                 _lockRepository = lockManager._lockRepository;
             }
 
             public string InstanceId { get; }
 
-            public string LockName { get; }
+            public LockId LockId { get; }
 
             public void Dispose()
             {
                 if (_disposed)
                 {
                     throw new ObjectDisposedException(nameof(LockInstance),
-                        $"This lock {LockName} for {InstanceId} has already been disposed");
+                        $"This lock {LockId} for {InstanceId} has already been disposed");
                 }
 
-                _lockRepository.ReleaseLock(LockName, InstanceId);
+                _lockRepository.ReleaseLock(LockId, InstanceId);
                 _lockManager.LockReleased(this);
                 _disposed = true;
             }

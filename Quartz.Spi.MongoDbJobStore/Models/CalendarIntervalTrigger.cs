@@ -9,7 +9,8 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        public CalendarIntervalTrigger(ICalendarIntervalTrigger trigger, TriggerState state) : base(trigger, state)
+        public CalendarIntervalTrigger(ICalendarIntervalTrigger trigger, TriggerState state, string instanceName)
+            : base(trigger, state, instanceName)
         {
             RepeatIntervalUnit = trigger.RepeatIntervalUnit;
             RepeatInterval = trigger.RepeatInterval;

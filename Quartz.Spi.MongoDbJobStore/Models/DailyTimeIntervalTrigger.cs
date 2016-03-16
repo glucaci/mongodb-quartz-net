@@ -11,7 +11,8 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        public DailyTimeIntervalTrigger(IDailyTimeIntervalTrigger trigger, TriggerState state) : base(trigger, state)
+        public DailyTimeIntervalTrigger(IDailyTimeIntervalTrigger trigger, TriggerState state, string instanceName)
+            : base(trigger, state, instanceName)
         {
             RepeatCount = trigger.RepeatCount;
             RepeatIntervalUnit = trigger.RepeatIntervalUnit;

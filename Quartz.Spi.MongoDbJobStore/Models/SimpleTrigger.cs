@@ -8,7 +8,8 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        public SimpleTrigger(ISimpleTrigger trigger, TriggerState state) : base(trigger, state)
+        public SimpleTrigger(ISimpleTrigger trigger, TriggerState state, string instanceName)
+            : base(trigger, state, instanceName)
         {
             RepeatCount = trigger.RepeatCount;
             RepeatInterval = trigger.RepeatInterval;

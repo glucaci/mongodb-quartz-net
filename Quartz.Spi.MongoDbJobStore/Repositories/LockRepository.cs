@@ -15,41 +15,41 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public bool TryAcquireLock(string lockName, string instanceId)
+        public bool TryAcquireLock(LockId lockId, string instanceId)
         {
-            Log.Trace($"Trying to acquire lock {lockName} on {instanceId}");
+            Log.Trace($"Trying to acquire lock {lockId} on {instanceId}");
             try
             {
                 Collection.InsertOne(new Lock
                 {
-                    Name = lockName,
+                    Id = lockId,
                     InstanceId = instanceId,
                     AquiredAt = DateTime.Now
                 });
-                Log.Trace($"Acquired lock {lockName} on {instanceId}");
+                Log.Trace($"Acquired lock {lockId} on {instanceId}");
                 return true;
             }
             catch (MongoWriteException)
             {
-                Log.Trace($"Failed to acquire lock {lockName} on {instanceId}");
+                Log.Trace($"Failed to acquire lock {lockId} on {instanceId}");
                 return false;
             }
         }
 
-        public bool ReleaseLock(string lockName, string instanceId)
+        public bool ReleaseLock(LockId lockId, string instanceId)
         {
-            Log.Trace($"Releasing lock {lockName} on {instanceId}");
+            Log.Trace($"Releasing lock {lockId} on {instanceId}");
             var result =
                 Collection.DeleteOne(
-                    FilterBuilder.Where(@lock => @lock.Name == lockName && @lock.InstanceId == instanceId));
+                    FilterBuilder.Where(@lock => @lock.Id == lockId && @lock.InstanceId == instanceId));
             if (result.DeletedCount > 0)
             {
-                Log.Trace($"Released lock {lockName} on {instanceId}");
+                Log.Trace($"Released lock {lockId} on {instanceId}");
                 return true;
             }
             else
             {
-                Log.Warn($"Failed to release lock {lockName} on {instanceId}. You do not own the lock.");
+                Log.Warn($"Failed to release lock {lockId} on {instanceId}. You do not own the lock.");
                 return false;
             }
         }

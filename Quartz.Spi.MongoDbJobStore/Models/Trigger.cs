@@ -26,9 +26,14 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        protected Trigger(ITrigger trigger, TriggerState state)
+        protected Trigger(ITrigger trigger, TriggerState state, string instanceName)
         {
-            Key = trigger.Key;
+            Id = new TriggerId()
+            {
+                InstanceName = instanceName,
+                Group = trigger.Key.Group,
+                Name = trigger.Key.Name
+            };
             JobKey = trigger.JobKey;
             Description = trigger.Description;
             NextFireTime = trigger.GetNextFireTimeUtc();
@@ -42,7 +47,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         }
 
         [BsonId]
-        public TriggerKey Key { get; set; }
+        public TriggerId Id { get; set; }
 
         public JobKey JobKey { get; set; }
 
@@ -68,5 +73,21 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public string Type { get; set; }
 
         public JobDataMap JobDataMap { get; set; }
+    }
+
+    internal class TriggerId
+    {
+        public TriggerId() { }
+
+        public TriggerId(TriggerKey triggerKey, string instanceName)
+        {
+            InstanceName = instanceName;
+            Name = triggerKey.Name;
+            Group = triggerKey.Group;
+        }
+
+        public string InstanceName { get; set; }
+        public string Name { get; set; }
+        public string Group { get; set; }
     }
 }

@@ -12,7 +12,7 @@ namespace Quartz.Spi.MongoDbJobStore
         /// <summary>
         ///     Initializes a new instance of the CollectionName class attribute with the desired name.
         /// </summary>
-        /// <param name="name">Name of the collection.</param>
+        /// <param name="name">Id of the collection.</param>
         public CollectionName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))

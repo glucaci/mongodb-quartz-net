@@ -20,12 +20,12 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 });
         }
 
-        public void DeleteScheduler(string schedulerId)
+        public void DeleteScheduler(SchedulerId schedulerId)
         {
             Collection.DeleteOne(sch => sch.Id == schedulerId);
         }
 
-        public void UpdateState(string schedulerId, SchedulerState state)
+        public void UpdateState(SchedulerId schedulerId, SchedulerState state)
         {
             Collection.UpdateOne(sch => sch.Id == schedulerId,
                 UpdateBuilder.Set(sch => sch.State, state));

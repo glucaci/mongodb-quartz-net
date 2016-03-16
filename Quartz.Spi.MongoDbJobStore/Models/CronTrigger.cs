@@ -6,7 +6,8 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        public CronTrigger(ICronTrigger trigger, TriggerState state) : base(trigger, state)
+        public CronTrigger(ICronTrigger trigger, TriggerState state, string instanceName)
+            : base(trigger, state, instanceName)
         {
             CronExpression = trigger.CronExpressionString;
             TimeZone = trigger.TimeZone.Id;

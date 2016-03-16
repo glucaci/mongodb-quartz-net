@@ -14,6 +14,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private IMongoClient _client;
         private IMongoDatabase _database;
+        private SchedulerId _schedulerId;
         private LockManager _lockManager;
         private SchedulerRepository _schedulerRepository;
         private JobDetailRepository _jobDetailRepository;
@@ -39,6 +40,7 @@ namespace Quartz.Spi.MongoDbJobStore
             var url = new MongoUrl(ConnectionString);
             _client = new MongoClient(ConnectionString);
             _database = _client.GetDatabase(url.DatabaseName);
+            _schedulerId = new SchedulerId(InstanceId, InstanceName);
             _lockManager = new LockManager(_database, InstanceName);
             _schedulerRepository = new SchedulerRepository(_database, InstanceName);
             _jobDetailRepository = new JobDetailRepository(_database, InstanceName);
@@ -47,10 +49,10 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void SchedulerStarted()
         {
-            Log.Trace($"Scheduler {InstanceName}/{InstanceId} started");
+            Log.Trace($"Scheduler {_schedulerId} started");
             _schedulerRepository.AddScheduler(new Scheduler()
             {
-                Id = InstanceId,
+                Id = _schedulerId,
                 State = SchedulerState.Started,
                 LastCheckIn = DateTime.Now
 
@@ -59,20 +61,20 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void SchedulerPaused()
         {
-            Log.Trace($"Scheduler {InstanceName}/{InstanceId} paused");
-            _schedulerRepository.UpdateState(InstanceId, SchedulerState.Paused);
+            Log.Trace($"Scheduler {_schedulerId} paused");
+            _schedulerRepository.UpdateState(_schedulerId, SchedulerState.Paused);
         }
 
         public void SchedulerResumed()
         {
-            Log.Trace($"Scheduler {InstanceName}/{InstanceId} resumed");
-            _schedulerRepository.UpdateState(InstanceId, SchedulerState.Resumed);
+            Log.Trace($"Scheduler {_schedulerId} resumed");
+            _schedulerRepository.UpdateState(_schedulerId, SchedulerState.Resumed);
         }
 
         public void Shutdown()
         {
-            Log.Trace($"Scheduler {InstanceName}/{InstanceId} shutdown");
-            _schedulerRepository.DeleteScheduler(InstanceId);
+            Log.Trace($"Scheduler {_schedulerId} shutdown");
+            _schedulerRepository.DeleteScheduler(_schedulerId);
         }
 
         public void StoreJobAndTrigger(IJobDetail newJob, IOperableTrigger newTrigger)
@@ -92,7 +94,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void StoreJob(IJobDetail newJob, bool replaceExisting)
         {
-            using (_lockManager.AcquireLock(Lock.TriggerAccess, InstanceId))
+            using (_lockManager.AcquireLock(new LockId(LockType.TriggerAccess, InstanceName), InstanceId))
             {
                 if (replaceExisting)
                 {
@@ -132,7 +134,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void StoreTrigger(IOperableTrigger newTrigger, bool replaceExisting)
         {
-            using (_lockManager.AcquireLock(Lock.TriggerAccess, InstanceId))
+            using (_lockManager.AcquireLock(new LockId(LockType.TriggerAccess, InstanceName), InstanceId))
             {
                 StoreTrigger(newTrigger, null, replaceExisting, Models.TriggerState.Waiting, false, false);
             }
@@ -140,7 +142,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private void StoreTrigger(IOperableTrigger newTrigger, IJobDetail job, bool replaceExisting, Models.TriggerState state, bool forceState, bool recovering)
         {
-            var existingTrigger = _triggerRepository.TriggerExists(newTrigger.Key);
+            var existingTrigger = _triggerRepository.TriggerExists(new TriggerId(newTrigger.Key, InstanceName));
 
             if (existingTrigger && !replaceExisting)
             {
