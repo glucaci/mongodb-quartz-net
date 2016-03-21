@@ -1,4 +1,8 @@
-﻿using MongoDB.Driver;
+﻿using System.Collections.Generic;
+using System.Linq;
+using MongoDB.Driver;
+using Quartz.Impl.Matchers;
+using Quartz.Spi.MongoDbJobStore.Extensions;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 
@@ -16,6 +20,24 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
             return Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).FirstOrDefault();
         }
+
+        public IEnumerable<JobKey> GetJobsKeys(GroupMatcher<JobKey> matcher)
+        {
+            return
+                Collection.Find(FilterBuilder.And(
+                    FilterBuilder.Eq(detail => detail.Id.InstanceName, InstanceName),
+                    FilterBuilder.Regex(detail => detail.Id.Group, matcher.ToBsonRegularExpression())))
+                    .Project(detail => detail.GetJobDetail().Key)
+                    .ToList();
+        }
+
+        public IEnumerable<string> GetJobGroupNames()
+        {
+            return Collection.AsQueryable()
+                .Where(detail => detail.Id.InstanceName == InstanceName)
+                .Select(detail => detail.Id.Group)
+                .Distinct();
+        } 
 
         public void AddJob(JobDetail jobDetail)
         {

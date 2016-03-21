@@ -30,7 +30,7 @@ namespace Quartz.Spi.MongoDbJobStore.Extensions
                 return new BsonRegularExpression(".*");
             }
             throw new ArgumentOutOfRangeException("Don't know how to translate " + matcher.CompareWithOperator +
-                                                  " into SQL");
+                                                  " into BSON regular expression");
         }
     }
 }

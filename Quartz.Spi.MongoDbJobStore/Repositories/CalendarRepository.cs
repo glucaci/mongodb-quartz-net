@@ -1,4 +1,6 @@
-﻿using MongoDB.Driver;
+﻿using System.Collections.Generic;
+using System.Linq;
+using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 
@@ -24,6 +26,14 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             return
                 Collection.Find(calendar => calendar.Id == new CalendarId(calendarName, InstanceName)).FirstOrDefault();
         }
+
+        public IEnumerable<string> GetCalendarNames()
+        {
+            return Collection.AsQueryable()
+                .Where(calendar => calendar.Id.InstanceName == InstanceName)
+                .Select(calendar => calendar.Id.CalendarName)
+                .Distinct();
+        } 
 
         public long GetCount()
         {

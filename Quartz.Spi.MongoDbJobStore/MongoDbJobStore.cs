@@ -27,6 +27,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private ISchedulerSignaler _schedulerSignaler;
         private TimeSpan _misfireThreshold = TimeSpan.FromMinutes(1);
+        private bool _schedulerRunning = false;
 
         static MongoDbJobStore()
         {
@@ -90,18 +91,21 @@ namespace Quartz.Spi.MongoDbJobStore
                 LastCheckIn = DateTime.Now
             });
             // TODO: Recover jobs
+            _schedulerRunning = true;
         }
 
         public void SchedulerPaused()
         {
             Log.Trace($"Scheduler {_schedulerId} paused");
             _schedulerRepository.UpdateState(_schedulerId.Id, SchedulerState.Paused);
+            _schedulerRunning = false;
         }
 
         public void SchedulerResumed()
         {
             Log.Trace($"Scheduler {_schedulerId} resumed");
             _schedulerRepository.UpdateState(_schedulerId.Id, SchedulerState.Resumed);
+            _schedulerRunning = true;
         }
 
         public void Shutdown()
@@ -139,7 +143,8 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public void StoreJobsAndTriggers(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs,
+        public void StoreJobsAndTriggers(
+            IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs,
             bool replace)
         {
             using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
@@ -149,7 +154,8 @@ namespace Quartz.Spi.MongoDbJobStore
                     StoreJobInternal(job, replace);
                     foreach (var trigger in triggersAndJobs[job])
                     {
-                        StoreTriggerInternal((IOperableTrigger)trigger, job, replace, Models.TriggerState.Waiting, false, false);
+                        StoreTriggerInternal((IOperableTrigger) trigger, job, replace, Models.TriggerState.Waiting,
+                            false, false);
                     }
                 }
             }
@@ -279,57 +285,107 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public Collection.ISet<JobKey> GetJobKeys(GroupMatcher<JobKey> matcher)
         {
-            throw new NotImplementedException();
+            return new Collection.HashSet<JobKey>(_jobDetailRepository.GetJobsKeys(matcher));
         }
 
         public Collection.ISet<TriggerKey> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
         {
-            throw new NotImplementedException();
+            return new Collection.HashSet<TriggerKey>(_triggerRepository.GetTriggerKeys(matcher));
         }
 
         public IList<string> GetJobGroupNames()
         {
-            throw new NotImplementedException();
+            return _jobDetailRepository.GetJobGroupNames().ToList();
         }
 
         public IList<string> GetTriggerGroupNames()
         {
-            throw new NotImplementedException();
+            return _triggerRepository.GetTriggerGroupNames().ToList();
         }
 
         public IList<string> GetCalendarNames()
         {
-            throw new NotImplementedException();
+            return _calendarRepository.GetCalendarNames().ToList();
         }
 
         public IList<IOperableTrigger> GetTriggersForJob(JobKey jobKey)
         {
-            throw new NotImplementedException();
+            return _triggerRepository.GetTriggers(jobKey)
+                .Select(trigger => trigger.GetTrigger())
+                .Cast<IOperableTrigger>()
+                .ToList();
         }
 
         public TriggerState GetTriggerState(TriggerKey triggerKey)
         {
-            throw new NotImplementedException();
+            var trigger = _triggerRepository.GetTrigger(triggerKey);
+
+            if (trigger == null)
+            {
+                return TriggerState.None;
+            }
+
+            switch (trigger.State)
+            {
+                case Models.TriggerState.Deleted:
+                    return TriggerState.None;
+                case Models.TriggerState.Complete:
+                    return TriggerState.Complete;
+                case Models.TriggerState.Paused:
+                case Models.TriggerState.PausedBlocked:
+                    return TriggerState.Paused;
+                case Models.TriggerState.Error:
+                    return TriggerState.Error;
+                case Models.TriggerState.Blocked:
+                    return TriggerState.Blocked;
+                default:
+                    return TriggerState.Normal;
+            }
         }
 
         public void PauseTrigger(TriggerKey triggerKey)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                PauseTriggerInternal(triggerKey);
+            }
         }
 
         public Collection.ISet<string> PauseTriggers(GroupMatcher<TriggerKey> matcher)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                return PauseTriggerGroupInternal(matcher);
+            }
         }
 
         public void PauseJob(JobKey jobKey)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                var triggers = GetTriggersForJob(jobKey);
+                foreach (var operableTrigger in triggers)
+                {
+                    PauseTriggerInternal(operableTrigger.Key);
+                }
+            }
         }
 
         public IList<string> PauseJobs(GroupMatcher<JobKey> matcher)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher).ToList();
+                foreach (var jobKey in jobKeys)
+                {
+                    var triggers = _triggerRepository.GetTriggers(jobKey);
+                    foreach (var trigger in triggers)
+                    {
+                        PauseTriggerInternal(trigger.GetTrigger().Key);
+                    }
+                }
+                return jobKeys.Select(key => key.Group).Distinct().ToList();
+            }
         }
 
         public void ResumeTrigger(TriggerKey triggerKey)
@@ -386,6 +442,46 @@ namespace Quartz.Spi.MongoDbJobStore
             SchedulerInstruction triggerInstCode)
         {
             throw new NotImplementedException();
+        }
+
+        private void PauseTriggerInternal(TriggerKey triggerKey)
+        {
+            var trigger = _triggerRepository.GetTrigger(triggerKey);
+            switch (trigger.State)
+            {
+                case Models.TriggerState.Waiting:
+                case Models.TriggerState.Acquired:
+                    _triggerRepository.UpdateTriggerState(triggerKey, Models.TriggerState.Paused);
+                    break;
+                case Models.TriggerState.Blocked:
+                    _triggerRepository.UpdateTriggerState(triggerKey, Models.TriggerState.PausedBlocked);
+                    break;
+            }
+        }
+
+        private Collection.ISet<string> PauseTriggerGroupInternal(GroupMatcher<TriggerKey> matcher)
+        {
+            _triggerRepository.UpdateTriggersStates(matcher, Models.TriggerState.Paused, Models.TriggerState.Acquired, Models.TriggerState.Waiting);
+            _triggerRepository.UpdateTriggersStates(matcher, Models.TriggerState.PausedBlocked, Models.TriggerState.Blocked);
+
+            var triggerGroups = _triggerRepository.GetTriggerGroupNames(matcher).ToList();
+
+            // make sure to account for an exact group match for a group that doesn't yet exist
+            var op = matcher.CompareWithOperator;
+            if (op.Equals(StringOperator.Equality) && !triggerGroups.Contains(matcher.CompareToValue))
+            {
+                triggerGroups.Add(matcher.CompareToValue);
+            }
+
+            foreach (var triggerGroup in triggerGroups)
+            {
+                if (!_pausedTriggerGroupRepository.IsTriggerGroupPaused(triggerGroup))
+                {
+                    _pausedTriggerGroupRepository.AddPausedTriggerGroup(triggerGroup);
+                }
+            }
+
+            return new Collection.HashSet<string>(triggerGroups);
         }
 
         private bool ReplaceTriggerInternal(TriggerKey triggerKey, IOperableTrigger newTrigger)
@@ -450,6 +546,24 @@ namespace Quartz.Spi.MongoDbJobStore
             return _calendarRepository.DeleteCalendar(calendarName) > 0;
         }
 
+        private void ResumeTriggerInternal(TriggerKey triggerKey)
+        {
+            var trigger = _triggerRepository.GetTrigger(triggerKey);
+            if (trigger?.NextFireTime == null || trigger.NextFireTime == DateTime.MinValue)
+            {
+                return;
+            }
+
+            var blocked = trigger.State == Models.TriggerState.PausedBlocked;
+            var newState = CheckBlockedState(trigger.JobKey, Models.TriggerState.Waiting);
+            var misfired = false;
+
+            if (_schedulerRunning && trigger.NextFireTime < DateTime.UtcNow)
+            {
+                // TODO
+            }
+        }
+
         private void StoreCalendarInternal(string calName, ICalendar calendar, bool replaceExisting, bool updateTriggers)
         {
             var existingCal = CalendarExists(calName);
@@ -470,7 +584,7 @@ namespace Quartz.Spi.MongoDbJobStore
                     var triggers = _triggerRepository.GetTriggers(calName);
                     foreach (var trigger in triggers)
                     {
-                        var quartzTrigger = (IOperableTrigger)trigger.GetTrigger();
+                        var quartzTrigger = (IOperableTrigger) trigger.GetTrigger();
                         quartzTrigger.UpdateWithNewCalendar(calendar, MisfireThreshold);
                         StoreTriggerInternal(quartzTrigger, null, true, Models.TriggerState.Waiting, false, false);
                     }
@@ -557,7 +671,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private Models.TriggerState CheckBlockedState(JobKey jobKey, Models.TriggerState currentState)
         {
-            if (currentState == Models.TriggerState.Waiting || currentState == Models.TriggerState.Paused)
+            if (currentState != Models.TriggerState.Waiting && currentState != Models.TriggerState.Paused)
             {
                 return currentState;
             }
