@@ -1,19 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Common.Logging;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 using Quartz.Spi.MongoDbJobStore.Repositories;
+using Quartz.Util;
 
 namespace Quartz.Spi.MongoDbJobStore
 {
     public class MongoDbJobStore : IJobStore
     {
+        private static readonly DateTimeOffset? SchedulingSignalDateTime = new DateTimeOffset(1982, 6, 28, 0, 0, 0, TimeSpan.FromSeconds(0));
+        private const string KeySignalChangeForTxCompletion = "sigChangeForTxCompletion";
         private const string AllGroupsPaused = "_$_ALL_GROUPS_PAUSED_$_";
         private static readonly ILog Log = LogManager.GetLogger<MongoDbJobStore>();
+        private static long _fireTriggerRecordCounter = DateTime.UtcNow.Ticks;
         private CalendarRepository _calendarRepository;
         private IMongoClient _client;
         private IMongoDatabase _database;
@@ -27,7 +32,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private ISchedulerSignaler _schedulerSignaler;
         private TimeSpan _misfireThreshold = TimeSpan.FromMinutes(1);
-        private bool _schedulerRunning = false;
+        private bool _schedulerRunning;
 
         static MongoDbJobStore()
         {
@@ -60,6 +65,20 @@ namespace Quartz.Spi.MongoDbJobStore
                     throw new ArgumentException("MisfireThreshold must be larger than 0");
                 }
                 _misfireThreshold = value;
+            }
+        }
+
+        protected virtual DateTimeOffset MisfireTime
+        {
+            get
+            {
+                var misfireTime = SystemTime.UtcNow();
+                if (MisfireThreshold > TimeSpan.Zero)
+                {
+                    misfireTime = misfireTime.AddMilliseconds(-1*MisfireThreshold.TotalMilliseconds);
+                }
+
+                return misfireTime;
             }
         }
 
@@ -144,7 +163,7 @@ namespace Quartz.Spi.MongoDbJobStore
         }
 
         public void StoreJobsAndTriggers(
-            IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs,
+            System.Collections.Generic.IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs,
             bool replace)
         {
             using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
@@ -390,58 +409,127 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void ResumeTrigger(TriggerKey triggerKey)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                ResumeTriggerInternal(triggerKey);
+            }
         }
 
         public IList<string> ResumeTriggers(GroupMatcher<TriggerKey> matcher)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                return ResumeTriggersInternal(matcher);
+            }
         }
 
         public Collection.ISet<string> GetPausedTriggerGroups()
         {
-            throw new NotImplementedException();
+            return new Collection.HashSet<string>(_pausedTriggerGroupRepository.GetPausedTriggerGroups());
         }
 
         public void ResumeJob(JobKey jobKey)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                var triggers = _triggerRepository.GetTriggers(jobKey);
+                foreach (var trigger in triggers)
+                {
+                    ResumeTriggerInternal(trigger.GetTrigger().Key);
+                }
+            }
         }
 
         public Collection.ISet<string> ResumeJobs(GroupMatcher<JobKey> matcher)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher).ToList();
+                foreach (var jobKey in jobKeys)
+                {
+                    var triggers = _triggerRepository.GetTriggers(jobKey);
+                    foreach (var trigger in triggers)
+                    {
+                        ResumeTriggerInternal(trigger.GetTrigger().Key);
+                    }
+                }
+                return new Collection.HashSet<string>(jobKeys.Select(key => key.Group));
+            }
         }
 
         public void PauseAll()
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                PauseAllInternal();
+            }
         }
 
         public void ResumeAll()
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                ResumeAllInternal();
+            }
         }
 
         public IList<IOperableTrigger> AcquireNextTriggers(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                return AcquireNextTriggersInternal(noLaterThan, maxCount, timeWindow);
+            }
         }
 
         public void ReleaseAcquiredTrigger(IOperableTrigger trigger)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                _triggerRepository.UpdateTriggerState(trigger.Key, Models.TriggerState.Waiting,
+                    Models.TriggerState.Acquired);
+                _firedTriggerRepository.DeleteFiredTrigger(trigger.FireInstanceId);
+            }
         }
 
         public IList<TriggerFiredResult> TriggersFired(IList<IOperableTrigger> triggers)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                var results = new List<TriggerFiredResult>();
+
+                foreach (var operableTrigger in triggers)
+                {
+                    TriggerFiredResult result;
+                    try
+                    {
+                        var bundle = TriggerFiredInternal(operableTrigger);
+                        result = new TriggerFiredResult(bundle);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error($"Caught exception: {ex.Message}", ex);
+                        result = new TriggerFiredResult(ex);
+                    }
+                    results.Add(result);
+                }
+
+                return results;
+            }
         }
 
         public void TriggeredJobComplete(IOperableTrigger trigger, IJobDetail jobDetail,
             SchedulerInstruction triggerInstCode)
         {
-            throw new NotImplementedException();
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                TriggeredJobCompleteInternal(trigger, jobDetail, triggerInstCode);
+            }
+
+            var sigTime = ClearAndGetSignalSchedulingChangeOnTxCompletion();
+            if (sigTime != null)
+            {
+                SignalSchedulingChangeImmediately(sigTime);
+            }
         }
 
         private void PauseTriggerInternal(TriggerKey triggerKey)
@@ -461,8 +549,10 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private Collection.ISet<string> PauseTriggerGroupInternal(GroupMatcher<TriggerKey> matcher)
         {
-            _triggerRepository.UpdateTriggersStates(matcher, Models.TriggerState.Paused, Models.TriggerState.Acquired, Models.TriggerState.Waiting);
-            _triggerRepository.UpdateTriggersStates(matcher, Models.TriggerState.PausedBlocked, Models.TriggerState.Blocked);
+            _triggerRepository.UpdateTriggersStates(matcher, Models.TriggerState.Paused, Models.TriggerState.Acquired,
+                Models.TriggerState.Waiting);
+            _triggerRepository.UpdateTriggersStates(matcher, Models.TriggerState.PausedBlocked,
+                Models.TriggerState.Blocked);
 
             var triggerGroups = _triggerRepository.GetTriggerGroupNames(matcher).ToList();
 
@@ -482,6 +572,20 @@ namespace Quartz.Spi.MongoDbJobStore
             }
 
             return new Collection.HashSet<string>(triggerGroups);
+        }
+
+        private void PauseAllInternal()
+        {
+            var groupNames = _triggerRepository.GetTriggerGroupNames();
+            foreach (var groupName in groupNames)
+            {
+                PauseTriggerGroupInternal(GroupMatcher<TriggerKey>.GroupEquals(groupName));
+            }
+
+            if (!_pausedTriggerGroupRepository.IsTriggerGroupPaused(AllGroupsPaused))
+            {
+                _pausedTriggerGroupRepository.AddPausedTriggerGroup(AllGroupsPaused);
+            }
         }
 
         private bool ReplaceTriggerInternal(TriggerKey triggerKey, IOperableTrigger newTrigger)
@@ -560,8 +664,39 @@ namespace Quartz.Spi.MongoDbJobStore
 
             if (_schedulerRunning && trigger.NextFireTime < DateTime.UtcNow)
             {
-                // TODO
+                misfired = UpdateMisfiredTrigger(triggerKey, newState, true);
             }
+
+            if (!misfired)
+            {
+                _triggerRepository.UpdateTriggerState(triggerKey, newState,
+                    blocked ? Models.TriggerState.PausedBlocked : Models.TriggerState.Paused);
+            }
+        }
+
+        private IList<string> ResumeTriggersInternal(GroupMatcher<TriggerKey> matcher)
+        {
+            _pausedTriggerGroupRepository.DeletePausedTriggerGroup(matcher);
+            var groups = new HashSet<string>();
+
+            var keys = _triggerRepository.GetTriggerKeys(matcher);
+            foreach (var triggerKey in keys)
+            {
+                ResumeTriggerInternal(triggerKey);
+                groups.Add(triggerKey.Group);
+            }
+            return groups.ToList();
+        }
+
+        private void ResumeAllInternal()
+        {
+            var groupNames = _triggerRepository.GetTriggerGroupNames();
+            foreach (var groupName in groupNames)
+            {
+                ResumeTriggersInternal(GroupMatcher<TriggerKey>.GroupEquals(groupName));
+            }
+
+            _pausedTriggerGroupRepository.DeletePausedTriggerGroup(AllGroupsPaused);
         }
 
         private void StoreCalendarInternal(string calName, ICalendar calendar, bool replaceExisting, bool updateTriggers)
@@ -688,6 +823,305 @@ namespace Quartz.Spi.MongoDbJobStore
             }
 
             return currentState;
+        }
+
+        private TriggerFiredBundle TriggerFiredInternal(IOperableTrigger trigger)
+        {
+            var state = _triggerRepository.GetTriggerState(trigger.Key);
+            if (state != Models.TriggerState.Acquired)
+            {
+                return null;
+            }
+
+            var job = _jobDetailRepository.GetJob(trigger.JobKey);
+            if (job == null)
+            {
+                return null;
+            }
+
+            ICalendar calendar = null;
+            if (trigger.CalendarName != null)
+            {
+                calendar = _calendarRepository.GetCalendar(trigger.CalendarName)?.GetCalendar();
+                if (calendar == null)
+                {
+                    return null;
+                }
+            }
+
+            _firedTriggerRepository.UpdateFiredTrigger(
+                new FiredTrigger(trigger.FireInstanceId,
+                    TriggerFactory.CreateTrigger(trigger, Models.TriggerState.Executing, InstanceName), job)
+                {
+                    InstanceId = InstanceId,
+                    State = Models.TriggerState.Executing
+                });
+
+            var prevFireTime = trigger.GetPreviousFireTimeUtc();
+            trigger.Triggered(calendar);
+
+            state = Models.TriggerState.Waiting;
+            var force = true;
+
+            if (job.ConcurrentExecutionDisallowed)
+            {
+                state = Models.TriggerState.Blocked;
+                force = false;
+                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Blocked, Models.TriggerState.Waiting);
+                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Blocked, Models.TriggerState.Acquired);
+                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.PausedBlocked, Models.TriggerState.Paused);
+            }
+
+            if (!trigger.GetNextFireTimeUtc().HasValue)
+            {
+                state = Models.TriggerState.Complete;
+                force = true;
+            }
+
+            var jobDetail = job.GetJobDetail();
+            StoreTriggerInternal(trigger, jobDetail, true, state, force, force);
+
+            jobDetail.JobDataMap.ClearDirtyFlag();
+
+            return new TriggerFiredBundle(jobDetail,
+                trigger,
+                calendar,
+                trigger.Key.Group.Equals(SchedulerConstants.DefaultRecoveryGroup),
+                DateTimeOffset.UtcNow, 
+                trigger.GetPreviousFireTimeUtc(),
+                prevFireTime,
+                trigger.GetNextFireTimeUtc());
+        }
+
+        private bool UpdateMisfiredTrigger(TriggerKey triggerKey, Models.TriggerState newStateIfNotComplete,
+            bool forceState)
+        {
+            var trigger = _triggerRepository.GetTrigger(triggerKey);
+            var misfireTime = DateTime.Now;
+            if (MisfireThreshold > TimeSpan.Zero)
+            {
+                misfireTime = misfireTime.AddMilliseconds(-1*MisfireThreshold.TotalMilliseconds);
+            }
+
+            if (trigger.NextFireTime > misfireTime)
+            {
+                return false;
+            }
+            DoUpdateOfMisfiredTrigger(trigger, forceState, newStateIfNotComplete, false);
+
+            return true;
+        }
+
+        private void DoUpdateOfMisfiredTrigger(Trigger trigger, bool forceState,
+            Models.TriggerState newStateIfNotComplete, bool recovering)
+        {
+            var operableTrigger = (IOperableTrigger) trigger.GetTrigger();
+
+            ICalendar cal = null;
+            if (trigger.CalendarName != null)
+            {
+                cal = _calendarRepository.GetCalendar(trigger.CalendarName).GetCalendar();
+            }
+
+            _schedulerSignaler.NotifyTriggerListenersMisfired(operableTrigger);
+            operableTrigger.UpdateAfterMisfire(cal);
+
+            if (operableTrigger.GetNextFireTimeUtc().HasValue)
+            {
+                StoreTriggerInternal(operableTrigger, null, true, Models.TriggerState.Complete, forceState, recovering);
+                _schedulerSignaler.NotifySchedulerListenersFinalized(operableTrigger);
+            }
+            else
+            {
+                StoreTriggerInternal(operableTrigger, null, true, newStateIfNotComplete, forceState, false);
+            }
+        }
+
+        private IList<IOperableTrigger> AcquireNextTriggersInternal(DateTimeOffset noLaterThan, int maxCount,
+            TimeSpan timeWindow)
+        {
+            if (timeWindow < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeWindow));
+            }
+
+            var acquiredTriggers = new List<IOperableTrigger>();
+            var acquiredJobKeysForNoConcurrentExec = new Collection.HashSet<JobKey>();
+
+            const int maxDoLoopRetry = 3;
+            var currentLoopCount = 0;
+
+            do
+            {
+                currentLoopCount++;
+                var keys = _triggerRepository.GetTriggersToAcquire(noLaterThan + timeWindow, MisfireTime, maxCount);
+
+                if (!keys.Any())
+                {
+                    return acquiredTriggers;
+                }
+
+                foreach (var triggerKey in keys)
+                {
+                    var nextTrigger = _triggerRepository.GetTrigger(triggerKey);
+                    if (nextTrigger == null)
+                    {
+                        continue;
+                    }
+
+                    var jobKey = nextTrigger.JobKey;
+                    JobDetail jobDetail;
+                    try
+                    {
+                        jobDetail = _jobDetailRepository.GetJob(jobKey);
+                    }
+                    catch (Exception)
+                    {
+                        _triggerRepository.UpdateTriggerState(triggerKey, Models.TriggerState.Error);
+                        continue;
+                    }
+
+                    if (jobDetail.ConcurrentExecutionDisallowed)
+                    {
+                        if (acquiredJobKeysForNoConcurrentExec.Contains(jobKey))
+                        {
+                            continue;
+                        }
+                        acquiredJobKeysForNoConcurrentExec.Add(jobKey);
+                    }
+
+                    var result = _triggerRepository.UpdateTriggerState(triggerKey, Models.TriggerState.Acquired,
+                        Models.TriggerState.Waiting);
+                    if (result <= 0)
+                    {
+                        continue;
+                    }
+
+                    var operableTrigger = (IOperableTrigger) nextTrigger.GetTrigger();
+                    operableTrigger.FireInstanceId = GetFiredTriggerRecordId();
+
+                    var firedTrigger = new FiredTrigger(operableTrigger.FireInstanceId, nextTrigger, null)
+                    {
+                        State = Models.TriggerState.Acquired,
+                        InstanceId = InstanceId
+                    };
+                    _firedTriggerRepository.AddFiredTrigger(firedTrigger);
+
+                    acquiredTriggers.Add(operableTrigger);
+                }
+
+                if (acquiredTriggers.Count == 0 && currentLoopCount < maxDoLoopRetry)
+                {
+                    continue;
+                }
+
+                break;
+            } while (true);
+
+            return acquiredTriggers;
+        }
+
+        private string GetFiredTriggerRecordId()
+        {
+            Interlocked.Increment(ref _fireTriggerRecordCounter);
+            return InstanceId + _fireTriggerRecordCounter;
+        }
+
+        private void TriggeredJobCompleteInternal(IOperableTrigger trigger, IJobDetail jobDetail,
+            SchedulerInstruction triggerInstCode)
+        {
+            try
+            {
+                switch (triggerInstCode)
+                {
+                    case SchedulerInstruction.DeleteTrigger:
+                        if (!trigger.GetNextFireTimeUtc().HasValue)
+                        {
+                            var trig = _triggerRepository.GetTrigger(trigger.Key);
+                            if (trig != null && !trig.NextFireTime.HasValue)
+                            {
+                                RemoveTriggerInternal(trigger.Key, jobDetail);
+                            }
+                        }
+                        else
+                        {
+                            RemoveTriggerInternal(trigger.Key, jobDetail);
+                            SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
+                        }
+                        break;
+                    case SchedulerInstruction.SetTriggerComplete:
+                        _triggerRepository.UpdateTriggerState(trigger.Key, Models.TriggerState.Complete);
+                        SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
+                        break;
+                    case SchedulerInstruction.SetTriggerError:
+                        Log.Info("Trigger " + trigger.Key + " set to ERROR state.");
+                        _triggerRepository.UpdateTriggerState(trigger.Key, Models.TriggerState.Error);
+                        SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
+                        break;
+                    case SchedulerInstruction.SetAllJobTriggersComplete:
+                        _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Complete);
+                        SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
+                        break;
+                    case SchedulerInstruction.SetAllJobTriggersError:
+                        Log.Info("All triggers of Job " + trigger.JobKey + " set to ERROR state.");
+                        _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Error);
+                        SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
+                        break;
+                }
+
+                if (jobDetail.ConcurrentExecutionDisallowed)
+                {
+                    _triggerRepository.UpdateTriggersStates(jobDetail.Key, Models.TriggerState.Waiting, Models.TriggerState.Blocked);
+                    _triggerRepository.UpdateTriggersStates(jobDetail.Key, Models.TriggerState.Paused, Models.TriggerState.PausedBlocked);
+                    SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
+                }
+
+                if (jobDetail.PersistJobDataAfterExecution && jobDetail.JobDataMap.Dirty)
+                {
+                    _jobDetailRepository.UpdateJobData(jobDetail.Key, jobDetail.JobDataMap);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
+            }
+
+            try
+            {
+                _firedTriggerRepository.DeleteFiredTrigger(trigger.FireInstanceId);
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
+            }
+        }
+
+        protected virtual void SignalSchedulingChangeOnTxCompletion(DateTimeOffset? candidateNewNextFireTime)
+        {
+            var sigTime = LogicalThreadContext.GetData<DateTimeOffset?>(KeySignalChangeForTxCompletion);
+            if (sigTime == null && candidateNewNextFireTime.HasValue)
+            {
+                LogicalThreadContext.SetData(KeySignalChangeForTxCompletion, candidateNewNextFireTime);
+            }
+            else
+            {
+                if (sigTime == null || candidateNewNextFireTime < sigTime)
+                {
+                    LogicalThreadContext.SetData(KeySignalChangeForTxCompletion, candidateNewNextFireTime);
+                }
+            }
+        }
+
+        protected virtual DateTimeOffset? ClearAndGetSignalSchedulingChangeOnTxCompletion()
+        {
+            var t = LogicalThreadContext.GetData<DateTimeOffset?>(KeySignalChangeForTxCompletion);
+            LogicalThreadContext.FreeNamedDataSlot(KeySignalChangeForTxCompletion);
+            return t;
+        }
+
+        protected virtual void SignalSchedulingChangeImmediately(DateTimeOffset? candidateNewNextFireTime)
+        {
+            _schedulerSignaler.SignalSchedulingChange(candidateNewNextFireTime);
         }
     }
 }

@@ -12,5 +12,10 @@
             Name = jobKey.Name;
             Group = jobKey.Group;
         }
+
+        public JobKey GetJobKey()
+        {
+            return new JobKey(Name, Group);
+        }
     }
 }

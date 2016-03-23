@@ -27,7 +27,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 Collection.Find(FilterBuilder.And(
                     FilterBuilder.Eq(detail => detail.Id.InstanceName, InstanceName),
                     FilterBuilder.Regex(detail => detail.Id.Group, matcher.ToBsonRegularExpression())))
-                    .Project(detail => detail.GetJobDetail().Key)
+                    .Project(detail => detail.Id.GetJobKey())
                     .ToList();
         }
 
@@ -53,6 +53,12 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                     IsUpsert = upsert
                 });
             return result.ModifiedCount;
+        }
+
+        public void UpdateJobData(JobKey jobKey, JobDataMap jobDataMap)
+        {
+            Collection.UpdateOne(detail => detail.Id == new JobDetailId(jobKey, InstanceName),
+                UpdateBuilder.Set(detail => detail.JobDataMap, jobDataMap));
         }
 
         public long DeleteJob(JobKey key)

@@ -8,6 +8,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 {
     internal enum TriggerState
     {
+        None = 0,
         Waiting,
         Acquired,
         Executing,

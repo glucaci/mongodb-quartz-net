@@ -6,12 +6,12 @@
         {
         }
 
-        public FiredTriggerId(string entryId, string instanceName)
+        public FiredTriggerId(string firedInstanceId, string instanceName)
         {
-            InstanceName = entryId;
-            EntryId = entryId;
+            InstanceName = instanceName;
+            FiredInstanceId = firedInstanceId;
         }
 
-        public string EntryId { get; set; }
+        public string FiredInstanceId { get; set; }
     }
 }

@@ -10,5 +10,10 @@ namespace Quartz.Spi.MongoDbJobStore.Models.Id
             Name = triggerKey.Name;
             Group = triggerKey.Group;
         }
+
+        public TriggerKey GetTriggerKey()
+        {
+            return new TriggerKey(Name, Group);
+        }
     }
 }

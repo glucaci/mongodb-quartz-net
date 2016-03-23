@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
+using Common.Logging;
 using MongoDB.Driver;
 
 namespace Quartz.Spi.MongoDbJobStore.Repositories
 {
     internal abstract class BaseRepository<TDocument>
     {
-        protected string InstanceName { get; }
+        private static readonly ILog Log = LogManager.GetLogger(typeof (BaseRepository<>));
+        private static readonly HashSet<string> InitializedCollections = new HashSet<string>();
 
         protected BaseRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
         {
@@ -17,7 +20,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             }
 
             Collection = database.GetCollection<TDocument>(collectionName);
+            EnsureIndexesCreated(collectionName);
         }
+
+
+        protected string InstanceName { get; }
 
         protected IMongoCollection<TDocument> Collection { get; }
 
@@ -31,7 +38,9 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         protected IndexKeysDefinitionBuilder<TDocument> IndexBuilder => Builders<TDocument>.IndexKeys;
 
-        public virtual void EnsureIndex() { }
+        public virtual void EnsureIndex()
+        {
+        }
 
         public void DeleteAll()
         {
@@ -49,6 +58,25 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             var collectionname = att != null ? ((CollectionName) att).Name : typeof (TDocument).Name;
 
             return collectionname;
+        }
+
+        private void EnsureIndexesCreated(string collectionName)
+        {
+            if (InitializedCollections.Contains(collectionName))
+            {
+                return;
+            }
+
+            lock (InitializedCollections)
+            {
+                if (InitializedCollections.Contains(collectionName))
+                {
+                    return;
+                }
+                Log.Trace($"Building index for {collectionName}");
+                EnsureIndex();
+                InitializedCollections.Add(collectionName);
+            }
         }
     }
 }
