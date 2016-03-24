@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Common.Logging;
 using MongoDB.Driver;
+using Quartz.Impl.AdoJobStore;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 using Quartz.Spi.MongoDbJobStore.Repositories;
 using Quartz.Util;
+using Calendar = Quartz.Spi.MongoDbJobStore.Models.Calendar;
 
 namespace Quartz.Spi.MongoDbJobStore
 {
@@ -44,10 +47,17 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public bool SupportsPersistence => true;
         public long EstimatedTimeToReleaseAndAcquireTrigger => 200;
-        public bool Clustered => true;
+        public bool Clustered => false;
         public string InstanceId { get; set; }
         public string InstanceName { get; set; }
         public int ThreadPoolSize { get; set; }
+
+        /// <summary>
+        /// Get or set the maximum number of misfired triggers that the misfire handling
+        /// thread will try to recover at one time (within one transaction).  The
+        /// default is 20.
+        /// </summary>
+        public int MaxMisfiresToHandleAtATime => 20;
 
         /// <summary> 
         /// The time span by which a trigger must have missed its
@@ -109,7 +119,15 @@ namespace Quartz.Spi.MongoDbJobStore
                 State = SchedulerState.Started,
                 LastCheckIn = DateTime.Now
             });
-            // TODO: Recover jobs
+
+            try
+            {
+                RecoverJobs();
+            }
+            catch (Exception ex)
+            {
+                throw new SchedulerConfigException("Failure occurred during job recovery", ex);
+            }
             _schedulerRunning = true;
         }
 
@@ -394,7 +412,7 @@ namespace Quartz.Spi.MongoDbJobStore
         {
             using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
             {
-                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher).ToList();
+                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher);
                 foreach (var jobKey in jobKeys)
                 {
                     var triggers = _triggerRepository.GetTriggers(jobKey);
@@ -444,7 +462,7 @@ namespace Quartz.Spi.MongoDbJobStore
         {
             using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
             {
-                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher).ToList();
+                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher);
                 foreach (var jobKey in jobKeys)
                 {
                     var triggers = _triggerRepository.GetTriggers(jobKey);
@@ -529,6 +547,14 @@ namespace Quartz.Spi.MongoDbJobStore
             if (sigTime != null)
             {
                 SignalSchedulingChangeImmediately(sigTime);
+            }
+        }
+
+        private void RecoverJobs()
+        {
+            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            {
+                RecoverJobsInternal();
             }
         }
 
@@ -1122,6 +1148,94 @@ namespace Quartz.Spi.MongoDbJobStore
         protected virtual void SignalSchedulingChangeImmediately(DateTimeOffset? candidateNewNextFireTime)
         {
             _schedulerSignaler.SignalSchedulingChange(candidateNewNextFireTime);
+        }
+        
+        private void RecoverJobsInternal()
+        {
+            var result = _triggerRepository.UpdateTriggersStates(Models.TriggerState.Waiting, Models.TriggerState.Acquired, Models.TriggerState.Blocked);
+            result += _triggerRepository.UpdateTriggersStates(Models.TriggerState.Paused,
+                Models.TriggerState.PausedBlocked);
+
+            Log.Info("Freed " + result + " triggers from 'acquired' / 'blocked' state.");
+
+            RecoverMisfiredJobsInternal(true);
+
+            var recoveringJobTriggers = _firedTriggerRepository.GetRecoverableFiredTriggers(InstanceId)
+                .Select(trigger => trigger.GetRecoveryTrigger(_triggerRepository.GetTriggerJobDataMap(trigger.TriggerKey)))
+                .ToList();
+            Log.Info("Recovering " + recoveringJobTriggers.Count +
+                        " jobs that were in-progress at the time of the last shut-down.");
+
+            foreach (var recoveringJobTrigger in recoveringJobTriggers)
+            {
+                if (_jobDetailRepository.JobExists(recoveringJobTrigger.JobKey))
+                {
+                    recoveringJobTrigger.ComputeFirstFireTimeUtc(null);
+                    StoreTriggerInternal(recoveringJobTrigger, null, false, Models.TriggerState.Waiting, false, true);
+                }
+            }
+            Log.Info("Recovery complete");
+
+            var completedTriggers = _triggerRepository.GetTriggerKeys(Models.TriggerState.Complete);
+            foreach (var completedTrigger in completedTriggers)
+            {
+                RemoveTriggerInternal(completedTrigger);
+            }
+
+            Log.Info(string.Format(CultureInfo.InvariantCulture, "Removed {0} 'complete' triggers.", completedTriggers.Count));
+
+            result = _firedTriggerRepository.DeleteFiredTriggersByInstanceId(InstanceId);
+            Log.Info("Removed " + result + " stale fired job entries.");
+        }
+
+        private JobStoreSupport.RecoverMisfiredJobsResult RecoverMisfiredJobsInternal(bool recovering)
+        {
+            var maxMisfiresToHandleAtTime = (recovering) ? -1 : MaxMisfiresToHandleAtATime;
+            List<TriggerKey> misfiredTriggers;
+            var earliestNewTime = DateTime.MaxValue;
+
+            var hasMoreMisfiredTriggers = _triggerRepository.HasMisfiredTriggers(MisfireTime.UtcDateTime,
+                maxMisfiresToHandleAtTime, out misfiredTriggers);
+
+            if (hasMoreMisfiredTriggers)
+            {
+                Log.Info(
+                    "Handling the first " + misfiredTriggers.Count +
+                    " triggers that missed their scheduled fire-time.  " +
+                    "More misfired triggers remain to be processed.");
+            }
+            else if (misfiredTriggers.Count > 0)
+            {
+                Log.Info(
+                    "Handling " + misfiredTriggers.Count +
+                    " trigger(s) that missed their scheduled fire-time.");
+            }
+            else
+            {
+                Log.Debug(
+                    "Found 0 triggers that missed their scheduled fire-time.");
+                return JobStoreSupport.RecoverMisfiredJobsResult.NoOp;
+            }
+
+            foreach (var misfiredTrigger in misfiredTriggers)
+            {
+                var trigger = _triggerRepository.GetTrigger(misfiredTrigger);
+
+                if (trigger == null)
+                {
+                    continue;
+                }
+
+                DoUpdateOfMisfiredTrigger(trigger, false, Models.TriggerState.Waiting, recovering);
+
+                var nextTime = trigger.NextFireTime;
+                if (nextTime.HasValue && nextTime.Value < earliestNewTime)
+                {
+                    earliestNewTime = nextTime.Value;
+                }
+            }
+
+            return new JobStoreSupport.RecoverMisfiredJobsResult(hasMoreMisfiredTriggers, misfiredTriggers.Count, earliestNewTime);
         }
     }
 }

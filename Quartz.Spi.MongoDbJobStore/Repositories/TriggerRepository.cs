@@ -41,18 +41,25 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 .FirstOrDefault();
         }
 
-        public IEnumerable<Trigger> GetTriggers(string calendarName)
+        public JobDataMap GetTriggerJobDataMap(TriggerKey triggerKey)
+        {
+            return Collection.Find(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName))
+                .Project(trigger => trigger.JobDataMap)
+                .FirstOrDefault();
+        }
+
+        public List<Trigger> GetTriggers(string calendarName)
         {
             return Collection.Find(FilterBuilder.Where(trigger => trigger.CalendarName == calendarName)).ToList();
         }
 
-        public IEnumerable<Trigger> GetTriggers(JobKey jobKey)
+        public List<Trigger> GetTriggers(JobKey jobKey)
         {
             return
                 Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToList();
         }
 
-        public IEnumerable<TriggerKey> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
+        public List<TriggerKey> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
         {
             return Collection.Find(FilterBuilder.And(
                 FilterBuilder.Eq(trigger => trigger.Id.InstanceName, InstanceName),
@@ -60,6 +67,13 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 .Project(trigger => trigger.Id.GetTriggerKey())
                 .ToList();
         }
+
+        public List<TriggerKey> GetTriggerKeys(Models.TriggerState state)
+        {
+            return Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.State == state)
+                .Project(trigger => trigger.Id.GetTriggerKey())
+                .ToList();
+        } 
 
         public IEnumerable<string> GetTriggerGroupNames()
         {
@@ -78,7 +92,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 .Distinct();
         }
 
-        public IEnumerable<TriggerKey> GetTriggersToAcquire(DateTimeOffset noLaterThan, DateTimeOffset noEarlierThan,
+        public List<TriggerKey> GetTriggersToAcquire(DateTimeOffset noLaterThan, DateTimeOffset noEarlierThan,
             int maxCount)
         {
             if (maxCount < 1)
@@ -90,11 +104,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             var noEarlierThanDateTime = noEarlierThan.UtcDateTime;
 
             return Collection.Find(trigger => trigger.Id.InstanceName == InstanceName &&
-                                       trigger.State == Models.TriggerState.Waiting &&
-                                       trigger.NextFireTime <= noLaterThanDateTime &&
-                                       (trigger.MisfireInstruction == -1 ||
-                                        (trigger.MisfireInstruction != -1 &&
-                                         trigger.NextFireTime >= noEarlierThanDateTime)))
+                                              trigger.State == Models.TriggerState.Waiting &&
+                                              trigger.NextFireTime <= noLaterThanDateTime &&
+                                              (trigger.MisfireInstruction == -1 ||
+                                               (trigger.MisfireInstruction != -1 &&
+                                                trigger.NextFireTime >= noEarlierThanDateTime)))
                 .Sort(SortBuilder.Combine(
                     SortBuilder.Ascending(trigger => trigger.NextFireTime),
                     SortBuilder.Descending(trigger => trigger.Priority)
@@ -140,30 +154,40 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
         }
 
-        public void UpdateTriggersStates(GroupMatcher<TriggerKey> matcher, Models.TriggerState newState,
+        public long UpdateTriggersStates(GroupMatcher<TriggerKey> matcher, Models.TriggerState newState,
             params Models.TriggerState[] oldStates)
         {
-            Collection.UpdateMany(FilterBuilder.And(
+            return Collection.UpdateMany(FilterBuilder.And(
                 FilterBuilder.Eq(trigger => trigger.Id.InstanceName, InstanceName),
                 FilterBuilder.Regex(trigger => trigger.Id.Group, matcher.ToBsonRegularExpression()),
-                FilterBuilder.In(trigger => trigger.State, oldStates)), 
-                UpdateBuilder.Set(trigger => trigger.State, newState));
+                FilterBuilder.In(trigger => trigger.State, oldStates)),
+                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
         }
 
-        public void UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState, Models.TriggerState oldState)
+        public long UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState,
+            params Models.TriggerState[] oldStates)
         {
-            Collection.UpdateMany(
+            return Collection.UpdateMany(
                 trigger =>
-                    trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey && trigger.State == oldState,
-                UpdateBuilder.Set(trigger => trigger.State, newState));
+                    trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey &&
+                    oldStates.Contains(trigger.State),
+                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
         }
 
-        public void UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState)
+        public long UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState)
         {
-            Collection.UpdateMany(
+            return Collection.UpdateMany(
                 trigger =>
                     trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey,
-                UpdateBuilder.Set(trigger => trigger.State, newState));
+                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
+        }
+
+        public long UpdateTriggersStates(Models.TriggerState newState, params Models.TriggerState[] oldStates)
+        {
+            return Collection.UpdateMany(
+                trigger =>
+                    trigger.Id.InstanceName == InstanceName && oldStates.Contains(trigger.State),
+                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
         }
 
         public long DeleteTrigger(TriggerKey key)
@@ -178,6 +202,48 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             return Collection.DeleteMany(
                 FilterBuilder.Where(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey))
                 .DeletedCount;
+        }
+
+        /// <summary>
+        /// Get the names of all of the triggers in the given state that have
+        /// misfired - according to the given timestamp.  No more than count will
+        /// be returned.
+        /// </summary>
+        /// <param name="nextFireTime"></param>
+        /// <param name="maxResults"></param>
+        /// <param name="results"></param>
+        /// <returns></returns>
+        public bool HasMisfiredTriggers(DateTime nextFireTime, int maxResults, out List<TriggerKey> results)
+        {
+            var cursor = Collection.Find(
+                trigger => trigger.Id.InstanceName == InstanceName &&
+                           trigger.MisfireInstruction != MisfireInstruction.IgnoreMisfirePolicy &&
+                           trigger.NextFireTime < nextFireTime &&
+                           trigger.State == Models.TriggerState.Waiting)
+                .Project(trigger => trigger.Id.GetTriggerKey())
+                .Sort(SortBuilder.Combine(
+                    SortBuilder.Ascending(trigger => trigger.NextFireTime),
+                    SortBuilder.Descending(trigger => trigger.Priority)
+                    )).ToCursor();
+
+            results = new List<TriggerKey>();
+
+            var hasReachedLimit = false;
+            while (cursor.MoveNext() && !hasReachedLimit)
+            {
+                foreach (var triggerKey in cursor.Current)
+                {
+                    if (results.Count == maxResults)
+                    {
+                        hasReachedLimit = true;
+                    }
+                    else
+                    {
+                        results.Add(triggerKey);
+                    }
+                }
+            }
+            return hasReachedLimit;
         }
     }
 }

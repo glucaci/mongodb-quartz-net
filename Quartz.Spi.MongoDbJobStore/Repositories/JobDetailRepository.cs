@@ -21,7 +21,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             return Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).FirstOrDefault();
         }
 
-        public IEnumerable<JobKey> GetJobsKeys(GroupMatcher<JobKey> matcher)
+        public List<JobKey> GetJobsKeys(GroupMatcher<JobKey> matcher)
         {
             return
                 Collection.Find(FilterBuilder.And(

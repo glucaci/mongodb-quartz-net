@@ -2,6 +2,7 @@
 using Common.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
+using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Repositories
 {

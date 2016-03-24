@@ -15,7 +15,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public IEnumerable<string> GetPausedTriggerGroups()
+        public List<string> GetPausedTriggerGroups()
         {
             return Collection.Find(group => group.Id.InstanceName == InstanceName)
                 .Project(group => group.Id.Group)

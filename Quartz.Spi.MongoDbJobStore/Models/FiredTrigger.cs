@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using MongoDB.Bson.Serialization.Attributes;
+using Quartz.Impl.Triggers;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
@@ -8,7 +10,6 @@ namespace Quartz.Spi.MongoDbJobStore.Models
     {
         public FiredTrigger()
         {
-            
         }
 
         public FiredTrigger(string firedInstanceId, Trigger trigger, JobDetail jobDetail)
@@ -50,5 +51,27 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public bool ConcurrentExecutionDisallowed { get; set; }
 
         public bool RequestsRecovery { get; set; }
+
+        public IOperableTrigger GetRecoveryTrigger(JobDataMap jobDataMap)
+        {
+            var firedTime = new DateTimeOffset(Fired);
+            var scheduledTime = Scheduled.HasValue ? new DateTimeOffset(Scheduled.Value) : DateTimeOffset.MinValue;
+            var recoveryTrigger = new SimpleTriggerImpl($"recover_{InstanceId}_{Guid.NewGuid()}",
+                SchedulerConstants.DefaultRecoveryGroup, scheduledTime)
+            {
+                JobName = JobKey.Name,
+                JobGroup = JobKey.Group,
+                Priority = Priority,
+                MisfireInstruction = MisfireInstruction.IgnoreMisfirePolicy,
+                JobDataMap = jobDataMap
+            };
+            recoveryTrigger.JobDataMap.Put(SchedulerConstants.FailedJobOriginalTriggerName, TriggerKey.Name);
+            recoveryTrigger.JobDataMap.Put(SchedulerConstants.FailedJobOriginalTriggerGroup, TriggerKey.Group);
+            recoveryTrigger.JobDataMap.Put(SchedulerConstants.FailedJobOriginalTriggerFiretime,
+                Convert.ToString(firedTime, CultureInfo.InvariantCulture));
+            recoveryTrigger.JobDataMap.Put(SchedulerConstants.FailedJobOriginalTriggerScheduledFiretime,
+                Convert.ToString(scheduledTime, CultureInfo.InvariantCulture));
+            return recoveryTrigger;
+        }
     }
 }

@@ -78,6 +78,7 @@
     <Compile Include="Models\JobDetail.cs" />
     <Compile Include="Models\Id\JobDetailId.cs" />
     <Compile Include="Models\Lock.cs" />
+    <Compile Include="Models\Id\LockId.cs" />
     <Compile Include="Models\PausedTriggerGroup.cs" />
     <Compile Include="Models\Id\PausedTriggerGroupId.cs" />
     <Compile Include="Models\Id\SchedulerId.cs" />
@@ -97,6 +98,7 @@
     <Compile Include="Repositories\PausedTriggerGroupRepository.cs" />
     <Compile Include="Repositories\SchedulerRepository.cs" />
     <Compile Include="Repositories\TriggerRepository.cs" />
+    <Compile Include="Serializers\JobDataMapSerializer.cs" />
     <Compile Include="Serializers\SetSerializer.cs" />
     <Compile Include="Serializers\TypeSerializer.cs" />
     <Compile Include="TriggerFactory.cs" />

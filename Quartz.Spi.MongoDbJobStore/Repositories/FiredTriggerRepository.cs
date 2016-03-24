@@ -13,17 +13,27 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public IEnumerable<FiredTrigger> GetFiredTriggers(JobKey jobKey)
+        public List<FiredTrigger> GetFiredTriggers(JobKey jobKey)
         {
             return
                 Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToList();
         }
 
-        public IEnumerable<FiredTrigger> GetFiredTriggers(string instanceId)
+        public List<FiredTrigger> GetFiredTriggers(string instanceId)
         {
             return
-                Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId).ToList();
-        } 
+                Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId)
+                    .ToList();
+        }
+
+        public List<FiredTrigger> GetRecoverableFiredTriggers(string instanceId)
+        {
+            return
+                Collection.Find(
+                    trigger =>
+                        trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId &&
+                        trigger.RequestsRecovery).ToList();
+        }
 
         public void AddFiredTrigger(FiredTrigger firedTrigger)
         {
@@ -33,6 +43,13 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         public void DeleteFiredTrigger(string firedInstanceId)
         {
             Collection.DeleteOne(trigger => trigger.Id == new FiredTriggerId(firedInstanceId, InstanceName));
+        }
+
+        public long DeleteFiredTriggersByInstanceId(string instanceId)
+        {
+            return
+                Collection.DeleteMany(
+                    trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId).DeletedCount;
         }
 
         public void UpdateFiredTrigger(FiredTrigger firedTrigger)

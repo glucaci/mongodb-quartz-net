@@ -1,6 +1,6 @@
 ﻿using System;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
 {
@@ -21,26 +21,5 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         public string InstanceId { get; set; }
 
         public DateTime AquiredAt { get; set; }
-    }
-
-    internal class LockId
-    {
-        public LockId() { }
-
-        public LockId(LockType lockType, string instanceName)
-        {
-            LockType = lockType;
-            InstanceName = instanceName;
-        }
-
-        [BsonRepresentation(BsonType.String)]
-        public LockType LockType { get; set; }
-
-        public string InstanceName { get; set; }
-
-        public override string ToString()
-        {
-            return $"{LockType}/{InstanceName}";
-        }
     }
 }
