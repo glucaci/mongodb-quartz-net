@@ -32,6 +32,7 @@ namespace Quartz.Spi.MongoDbJobStore
         private SchedulerId _schedulerId;
         private SchedulerRepository _schedulerRepository;
         private TriggerRepository _triggerRepository;
+        private MisfireHandler _misfireHandler;
 
         private ISchedulerSignaler _schedulerSignaler;
         private TimeSpan _misfireThreshold = TimeSpan.FromMinutes(1);
@@ -57,7 +58,14 @@ namespace Quartz.Spi.MongoDbJobStore
         /// thread will try to recover at one time (within one transaction).  The
         /// default is 20.
         /// </summary>
-        public int MaxMisfiresToHandleAtATime => 20;
+        public int MaxMisfiresToHandleAtATime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the database retry interval.
+        /// </summary>
+        /// <value>The db retry interval.</value>
+        [TimeSpanParseRule(TimeSpanParseRule.Milliseconds)]
+        public TimeSpan DbRetryInterval { get; set; }
 
         /// <summary> 
         /// The time span by which a trigger must have missed its
@@ -65,7 +73,7 @@ namespace Quartz.Spi.MongoDbJobStore
         /// have its misfire instruction applied.
         /// </summary>
         [TimeSpanParseRule(TimeSpanParseRule.Milliseconds)]
-        public virtual TimeSpan MisfireThreshold
+        public TimeSpan MisfireThreshold
         {
             get { return _misfireThreshold; }
             set
@@ -78,7 +86,12 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        protected virtual DateTimeOffset MisfireTime
+        /// <summary>
+        /// Gets or sets the number of retries before an error is logged for recovery operations.
+        /// </summary>
+        public int RetryableActionErrorLogThreshold { get; set; }
+
+        protected DateTimeOffset MisfireTime
         {
             get
             {
@@ -90,6 +103,13 @@ namespace Quartz.Spi.MongoDbJobStore
 
                 return misfireTime;
             }
+        }
+
+        public MongoDbJobStore()
+        {
+            MaxMisfiresToHandleAtATime = 20;
+            RetryableActionErrorLogThreshold = 4;
+            DbRetryInterval = TimeSpan.FromSeconds(15);
         }
 
         public void Initialize(ITypeLoadHelper loadHelper, ISchedulerSignaler signaler)
@@ -128,6 +148,8 @@ namespace Quartz.Spi.MongoDbJobStore
             {
                 throw new SchedulerConfigException("Failure occurred during job recovery", ex);
             }
+            _misfireHandler = new MisfireHandler(this);
+            _misfireHandler.Start();
             _schedulerRunning = true;
         }
 
@@ -148,6 +170,18 @@ namespace Quartz.Spi.MongoDbJobStore
         public void Shutdown()
         {
             Log.Trace($"Scheduler {_schedulerId} shutdown");
+            if (_misfireHandler != null)
+            {
+                _misfireHandler.Shutdown();
+                try
+                {
+                    _misfireHandler.Join();
+                }
+                catch (ThreadInterruptedException)
+                {
+                    
+                }
+            }
             _schedulerRepository.DeleteScheduler(_schedulerId.Id);
         }
 
@@ -547,6 +581,33 @@ namespace Quartz.Spi.MongoDbJobStore
             if (sigTime != null)
             {
                 SignalSchedulingChangeImmediately(sigTime);
+            }
+        }
+
+        internal JobStoreSupport.RecoverMisfiredJobsResult DoRecoverMisfires()
+        {
+            try
+            {
+                var result = JobStoreSupport.RecoverMisfiredJobsResult.NoOp;
+
+                var misfireCount = _triggerRepository.GetMisfireCount(MisfireTime.UtcDateTime);
+                if (misfireCount == 0)
+                {
+                    Log.Debug("Found 0 triggers that missed their scheduled fire-time.");
+                }
+                else
+                {
+                    using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                    {
+                        result = RecoverMisfiredJobsInternal(false);
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -1145,7 +1206,7 @@ namespace Quartz.Spi.MongoDbJobStore
             return t;
         }
 
-        protected virtual void SignalSchedulingChangeImmediately(DateTimeOffset? candidateNewNextFireTime)
+        internal virtual void SignalSchedulingChangeImmediately(DateTimeOffset? candidateNewNextFireTime)
         {
             _schedulerSignaler.SignalSchedulingChange(candidateNewNextFireTime);
         }

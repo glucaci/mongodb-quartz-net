@@ -131,6 +131,17 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                     .Count();
         }
 
+        public long GetMisfireCount(DateTime nextFireTime)
+        {
+            return
+                Collection.Find(
+                    trigger =>
+                        trigger.Id.InstanceName == InstanceName &&
+                        trigger.MisfireInstruction != MisfireInstruction.IgnoreMisfirePolicy &&
+                        trigger.NextFireTime < nextFireTime && trigger.State == Models.TriggerState.Waiting)
+                    .Count();
+        }
+
         public void AddTrigger(Trigger trigger)
         {
             Collection.InsertOne(trigger);

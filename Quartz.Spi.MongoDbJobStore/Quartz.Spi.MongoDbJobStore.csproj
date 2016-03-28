@@ -66,6 +66,7 @@
   <ItemGroup>
     <Compile Include="Extensions\GroupMatcherExtensions.cs" />
     <Compile Include="LockManager.cs" />
+    <Compile Include="MisfireHandler.cs" />
     <Compile Include="Models\Calendar.cs" />
     <Compile Include="Models\Id\BaseId.cs" />
     <Compile Include="Models\Id\BaseKeyId.cs" />
