@@ -61,8 +61,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             BsonClassMap.RegisterClassMap<DailyTimeIntervalTrigger>(map =>
             {
                 map.AutoMap();
-                map.MapProperty(trigger => trigger.DaysOfWeek)
-                    .SetSerializer(new ArraySerializer<DayOfWeek>(new EnumSerializer<DayOfWeek>(BsonType.String)));
+                var serializer =
+                    new EnumerableInterfaceImplementerSerializer
+                        <System.Collections.Generic.HashSet<DayOfWeek>, DayOfWeek>(
+                        new EnumSerializer<DayOfWeek>(BsonType.String));
+                map.MapProperty(trigger => trigger.DaysOfWeek).SetSerializer(serializer);
             });
         }
     }

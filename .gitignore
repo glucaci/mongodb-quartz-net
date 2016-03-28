@@ -3,3 +3,5 @@ Quartz.Spi.MongoDbJobStore/obj/
 packages/
 *.user
 Quartz.Spi.MongoDbJobStore/bin/
+Quartz.Spi.MongoDbJobStore.Tests/bin/
+Quartz.Spi.MongoDbJobStore.Tests/obj/
