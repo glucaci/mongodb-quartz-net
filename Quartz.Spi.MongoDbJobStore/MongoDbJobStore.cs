@@ -17,7 +17,9 @@ namespace Quartz.Spi.MongoDbJobStore
 {
     public class MongoDbJobStore : IJobStore
     {
-        private static readonly DateTimeOffset? SchedulingSignalDateTime = new DateTimeOffset(1982, 6, 28, 0, 0, 0, TimeSpan.FromSeconds(0));
+        private static readonly DateTimeOffset? SchedulingSignalDateTime = new DateTimeOffset(1982, 6, 28, 0, 0, 0,
+            TimeSpan.FromSeconds(0));
+
         private const string KeySignalChangeForTxCompletion = "sigChangeForTxCompletion";
         private const string AllGroupsPaused = "_$_ALL_GROUPS_PAUSED_$_";
         private static readonly ILog Log = LogManager.GetLogger<MongoDbJobStore>();
@@ -179,7 +181,6 @@ namespace Quartz.Spi.MongoDbJobStore
                 }
                 catch (ThreadInterruptedException)
                 {
-                    
                 }
             }
             _schedulerRepository.DeleteScheduler(_schedulerId.Id);
@@ -187,10 +188,17 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void StoreJobAndTrigger(IJobDetail newJob, IOperableTrigger newTrigger)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                StoreJobInternal(newJob, false);
-                StoreTriggerInternal(newTrigger, newJob, false, Models.TriggerState.Waiting, false, false);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    StoreJobInternal(newJob, false);
+                    StoreTriggerInternal(newTrigger, newJob, false, Models.TriggerState.Waiting, false, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -208,9 +216,16 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void StoreJob(IJobDetail newJob, bool replaceExisting)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                StoreJobInternal(newJob, replaceExisting);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    StoreJobInternal(newJob, replaceExisting);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -218,33 +233,54 @@ namespace Quartz.Spi.MongoDbJobStore
             System.Collections.Generic.IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs,
             bool replace)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                foreach (var job in triggersAndJobs.Keys)
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
-                    StoreJobInternal(job, replace);
-                    foreach (var trigger in triggersAndJobs[job])
+                    foreach (var job in triggersAndJobs.Keys)
                     {
-                        StoreTriggerInternal((IOperableTrigger) trigger, job, replace, Models.TriggerState.Waiting,
-                            false, false);
+                        StoreJobInternal(job, replace);
+                        foreach (var trigger in triggersAndJobs[job])
+                        {
+                            StoreTriggerInternal((IOperableTrigger) trigger, job, replace, Models.TriggerState.Waiting,
+                                false, false);
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public bool RemoveJob(JobKey jobKey)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return RemoveJobInternal(jobKey);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return RemoveJobInternal(jobKey);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public bool RemoveJobs(IList<JobKey> jobKeys)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return jobKeys.Aggregate(true, (current, jobKey) => current && RemoveJobInternal(jobKey));
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return jobKeys.Aggregate(true, (current, jobKey) => current && RemoveJobInternal(jobKey));
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -263,25 +299,47 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public bool RemoveTrigger(TriggerKey triggerKey)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return RemoveTriggerInternal(triggerKey);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return RemoveTriggerInternal(triggerKey);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public bool RemoveTriggers(IList<TriggerKey> triggerKeys)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return triggerKeys.Aggregate(true, (current, triggerKey) => current && RemoveTriggerInternal(triggerKey));
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return triggerKeys.Aggregate(true,
+                        (current, triggerKey) => current && RemoveTriggerInternal(triggerKey));
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public bool ReplaceTrigger(TriggerKey triggerKey, IOperableTrigger newTrigger)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return ReplaceTriggerInternal(triggerKey, newTrigger);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return ReplaceTriggerInternal(triggerKey, newTrigger);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -307,30 +365,51 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void ClearAllSchedulingData()
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                _calendarRepository.DeleteAll();
-                _firedTriggerRepository.DeleteAll();
-                _jobDetailRepository.DeleteAll();
-                _pausedTriggerGroupRepository.DeleteAll();
-                _schedulerRepository.DeleteAll();
-                _triggerRepository.DeleteAll();
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    _calendarRepository.DeleteAll();
+                    _firedTriggerRepository.DeleteAll();
+                    _jobDetailRepository.DeleteAll();
+                    _pausedTriggerGroupRepository.DeleteAll();
+                    _schedulerRepository.DeleteAll();
+                    _triggerRepository.DeleteAll();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void StoreCalendar(string name, ICalendar calendar, bool replaceExisting, bool updateTriggers)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                StoreCalendarInternal(name, calendar, replaceExisting, updateTriggers);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    StoreCalendarInternal(name, calendar, replaceExisting, updateTriggers);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public bool RemoveCalendar(string calName)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return RemoveCalendarInternal(calName);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return RemoveCalendarInternal(calName);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -416,62 +495,104 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void PauseTrigger(TriggerKey triggerKey)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                PauseTriggerInternal(triggerKey);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    PauseTriggerInternal(triggerKey);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public Collection.ISet<string> PauseTriggers(GroupMatcher<TriggerKey> matcher)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return PauseTriggerGroupInternal(matcher);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return PauseTriggerGroupInternal(matcher);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void PauseJob(JobKey jobKey)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                var triggers = GetTriggersForJob(jobKey);
-                foreach (var operableTrigger in triggers)
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
-                    PauseTriggerInternal(operableTrigger.Key);
+                    var triggers = GetTriggersForJob(jobKey);
+                    foreach (var operableTrigger in triggers)
+                    {
+                        PauseTriggerInternal(operableTrigger.Key);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public IList<string> PauseJobs(GroupMatcher<JobKey> matcher)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher);
-                foreach (var jobKey in jobKeys)
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
-                    var triggers = _triggerRepository.GetTriggers(jobKey);
-                    foreach (var trigger in triggers)
+                    var jobKeys = _jobDetailRepository.GetJobsKeys(matcher);
+                    foreach (var jobKey in jobKeys)
                     {
-                        PauseTriggerInternal(trigger.GetTrigger().Key);
+                        var triggers = _triggerRepository.GetTriggers(jobKey);
+                        foreach (var trigger in triggers)
+                        {
+                            PauseTriggerInternal(trigger.GetTrigger().Key);
+                        }
                     }
+                    return jobKeys.Select(key => key.Group).Distinct().ToList();
                 }
-                return jobKeys.Select(key => key.Group).Distinct().ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void ResumeTrigger(TriggerKey triggerKey)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                ResumeTriggerInternal(triggerKey);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    ResumeTriggerInternal(triggerKey);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public IList<string> ResumeTriggers(GroupMatcher<TriggerKey> matcher)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return ResumeTriggersInternal(matcher);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return ResumeTriggersInternal(matcher);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -482,22 +603,9 @@ namespace Quartz.Spi.MongoDbJobStore
 
         public void ResumeJob(JobKey jobKey)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                var triggers = _triggerRepository.GetTriggers(jobKey);
-                foreach (var trigger in triggers)
-                {
-                    ResumeTriggerInternal(trigger.GetTrigger().Key);
-                }
-            }
-        }
-
-        public Collection.ISet<string> ResumeJobs(GroupMatcher<JobKey> matcher)
-        {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
-            {
-                var jobKeys = _jobDetailRepository.GetJobsKeys(matcher);
-                foreach (var jobKey in jobKeys)
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
                     var triggers = _triggerRepository.GetTriggers(jobKey);
                     foreach (var trigger in triggers)
@@ -505,82 +613,151 @@ namespace Quartz.Spi.MongoDbJobStore
                         ResumeTriggerInternal(trigger.GetTrigger().Key);
                     }
                 }
-                return new Collection.HashSet<string>(jobKeys.Select(key => key.Group));
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
+            }
+        }
+
+        public Collection.ISet<string> ResumeJobs(GroupMatcher<JobKey> matcher)
+        {
+            try
+            {
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    var jobKeys = _jobDetailRepository.GetJobsKeys(matcher);
+                    foreach (var jobKey in jobKeys)
+                    {
+                        var triggers = _triggerRepository.GetTriggers(jobKey);
+                        foreach (var trigger in triggers)
+                        {
+                            ResumeTriggerInternal(trigger.GetTrigger().Key);
+                        }
+                    }
+                    return new Collection.HashSet<string>(jobKeys.Select(key => key.Group));
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void PauseAll()
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                PauseAllInternal();
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    PauseAllInternal();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void ResumeAll()
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                ResumeAllInternal();
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    ResumeAllInternal();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public IList<IOperableTrigger> AcquireNextTriggers(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                return AcquireNextTriggersInternal(noLaterThan, maxCount, timeWindow);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    return AcquireNextTriggersInternal(noLaterThan, maxCount, timeWindow);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void ReleaseAcquiredTrigger(IOperableTrigger trigger)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                _triggerRepository.UpdateTriggerState(trigger.Key, Models.TriggerState.Waiting,
-                    Models.TriggerState.Acquired);
-                _firedTriggerRepository.DeleteFiredTrigger(trigger.FireInstanceId);
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    _triggerRepository.UpdateTriggerState(trigger.Key, Models.TriggerState.Waiting,
+                        Models.TriggerState.Acquired);
+                    _firedTriggerRepository.DeleteFiredTrigger(trigger.FireInstanceId);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public IList<TriggerFiredResult> TriggersFired(IList<IOperableTrigger> triggers)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                var results = new List<TriggerFiredResult>();
-
-                foreach (var operableTrigger in triggers)
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
-                    TriggerFiredResult result;
-                    try
-                    {
-                        var bundle = TriggerFiredInternal(operableTrigger);
-                        result = new TriggerFiredResult(bundle);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error($"Caught exception: {ex.Message}", ex);
-                        result = new TriggerFiredResult(ex);
-                    }
-                    results.Add(result);
-                }
+                    var results = new List<TriggerFiredResult>();
 
-                return results;
+                    foreach (var operableTrigger in triggers)
+                    {
+                        TriggerFiredResult result;
+                        try
+                        {
+                            var bundle = TriggerFiredInternal(operableTrigger);
+                            result = new TriggerFiredResult(bundle);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error($"Caught exception: {ex.Message}", ex);
+                            result = new TriggerFiredResult(ex);
+                        }
+                        results.Add(result);
+                    }
+
+                    return results;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
         public void TriggeredJobComplete(IOperableTrigger trigger, IJobDetail jobDetail,
             SchedulerInstruction triggerInstCode)
         {
-            using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+            try
             {
-                TriggeredJobCompleteInternal(trigger, jobDetail, triggerInstCode);
-            }
+                using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
+                {
+                    TriggeredJobCompleteInternal(trigger, jobDetail, triggerInstCode);
+                }
 
-            var sigTime = ClearAndGetSignalSchedulingChangeOnTxCompletion();
-            if (sigTime != null)
+                var sigTime = ClearAndGetSignalSchedulingChangeOnTxCompletion();
+                if (sigTime != null)
+                {
+                    SignalSchedulingChangeImmediately(sigTime);
+                }
+            }
+            catch (Exception ex)
             {
-                SignalSchedulingChangeImmediately(sigTime);
+                throw new JobPersistenceException(ex.Message, ex);
             }
         }
 
@@ -954,9 +1131,12 @@ namespace Quartz.Spi.MongoDbJobStore
             {
                 state = Models.TriggerState.Blocked;
                 force = false;
-                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Blocked, Models.TriggerState.Waiting);
-                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Blocked, Models.TriggerState.Acquired);
-                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.PausedBlocked, Models.TriggerState.Paused);
+                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Blocked,
+                    Models.TriggerState.Waiting);
+                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.Blocked,
+                    Models.TriggerState.Acquired);
+                _triggerRepository.UpdateTriggersStates(trigger.JobKey, Models.TriggerState.PausedBlocked,
+                    Models.TriggerState.Paused);
             }
 
             if (!trigger.GetNextFireTimeUtc().HasValue)
@@ -974,7 +1154,7 @@ namespace Quartz.Spi.MongoDbJobStore
                 trigger,
                 calendar,
                 trigger.Key.Group.Equals(SchedulerConstants.DefaultRecoveryGroup),
-                DateTimeOffset.UtcNow, 
+                DateTimeOffset.UtcNow,
                 trigger.GetPreviousFireTimeUtc(),
                 prevFireTime,
                 trigger.GetNextFireTimeUtc());
@@ -1158,8 +1338,10 @@ namespace Quartz.Spi.MongoDbJobStore
 
                 if (jobDetail.ConcurrentExecutionDisallowed)
                 {
-                    _triggerRepository.UpdateTriggersStates(jobDetail.Key, Models.TriggerState.Waiting, Models.TriggerState.Blocked);
-                    _triggerRepository.UpdateTriggersStates(jobDetail.Key, Models.TriggerState.Paused, Models.TriggerState.PausedBlocked);
+                    _triggerRepository.UpdateTriggersStates(jobDetail.Key, Models.TriggerState.Waiting,
+                        Models.TriggerState.Blocked);
+                    _triggerRepository.UpdateTriggersStates(jobDetail.Key, Models.TriggerState.Paused,
+                        Models.TriggerState.PausedBlocked);
                     SignalSchedulingChangeOnTxCompletion(SchedulingSignalDateTime);
                 }
 
@@ -1210,10 +1392,11 @@ namespace Quartz.Spi.MongoDbJobStore
         {
             _schedulerSignaler.SignalSchedulingChange(candidateNewNextFireTime);
         }
-        
+
         private void RecoverJobsInternal()
         {
-            var result = _triggerRepository.UpdateTriggersStates(Models.TriggerState.Waiting, Models.TriggerState.Acquired, Models.TriggerState.Blocked);
+            var result = _triggerRepository.UpdateTriggersStates(Models.TriggerState.Waiting,
+                Models.TriggerState.Acquired, Models.TriggerState.Blocked);
             result += _triggerRepository.UpdateTriggersStates(Models.TriggerState.Paused,
                 Models.TriggerState.PausedBlocked);
 
@@ -1222,10 +1405,11 @@ namespace Quartz.Spi.MongoDbJobStore
             RecoverMisfiredJobsInternal(true);
 
             var recoveringJobTriggers = _firedTriggerRepository.GetRecoverableFiredTriggers(InstanceId)
-                .Select(trigger => trigger.GetRecoveryTrigger(_triggerRepository.GetTriggerJobDataMap(trigger.TriggerKey)))
+                .Select(
+                    trigger => trigger.GetRecoveryTrigger(_triggerRepository.GetTriggerJobDataMap(trigger.TriggerKey)))
                 .ToList();
             Log.Info("Recovering " + recoveringJobTriggers.Count +
-                        " jobs that were in-progress at the time of the last shut-down.");
+                     " jobs that were in-progress at the time of the last shut-down.");
 
             foreach (var recoveringJobTrigger in recoveringJobTriggers)
             {
@@ -1243,7 +1427,8 @@ namespace Quartz.Spi.MongoDbJobStore
                 RemoveTriggerInternal(completedTrigger);
             }
 
-            Log.Info(string.Format(CultureInfo.InvariantCulture, "Removed {0} 'complete' triggers.", completedTriggers.Count));
+            Log.Info(string.Format(CultureInfo.InvariantCulture, "Removed {0} 'complete' triggers.",
+                completedTriggers.Count));
 
             result = _firedTriggerRepository.DeleteFiredTriggersByInstanceId(InstanceId);
             Log.Info("Removed " + result + " stale fired job entries.");
@@ -1296,7 +1481,8 @@ namespace Quartz.Spi.MongoDbJobStore
                 }
             }
 
-            return new JobStoreSupport.RecoverMisfiredJobsResult(hasMoreMisfiredTriggers, misfiredTriggers.Count, earliestNewTime);
+            return new JobStoreSupport.RecoverMisfiredJobsResult(hasMoreMisfiredTriggers, misfiredTriggers.Count,
+                earliestNewTime);
         }
     }
 }
