@@ -47,14 +47,13 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public long UpdateCalendar(Calendar calendar)
         {
-            return Collection.ReplaceOne(FilterBuilder.Where(cal => cal.Id == calendar.Id), calendar).ModifiedCount;
+            return Collection.ReplaceOne(cal => cal.Id == calendar.Id, calendar).MatchedCount;
         }
 
         public long DeleteCalendar(string calendarName)
         {
             return
-                Collection.DeleteOne(
-                    FilterBuilder.Where(calendar => calendar.Id == new CalendarId(calendarName, InstanceName)))
+                Collection.DeleteOne(calendar => calendar.Id == new CalendarId(calendarName, InstanceName))
                     .DeletedCount;
         }
     }

@@ -44,13 +44,13 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public override ITrigger GetTrigger()
         {
-            var trigger = new DailyTimeIntervalTriggerImpl()
+            var trigger = new DailyTimeIntervalTriggerImpl
             {
                 RepeatCount = RepeatCount,
                 RepeatIntervalUnit = RepeatIntervalUnit,
                 RepeatInterval = RepeatInterval,
-                StartTimeOfDay = StartTimeOfDay,
-                EndTimeOfDay = EndTimeOfDay,
+                StartTimeOfDay = StartTimeOfDay ?? new TimeOfDay(0, 0, 0),
+                EndTimeOfDay = EndTimeOfDay ?? new TimeOfDay(23, 59, 59),
                 DaysOfWeek = new Collection.HashSet<DayOfWeek>(DaysOfWeek),
                 TimesTriggered = TimesTriggered,
                 TimeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZone)

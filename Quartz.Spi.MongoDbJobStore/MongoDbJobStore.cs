@@ -882,6 +882,10 @@ namespace Quartz.Spi.MongoDbJobStore
         private bool RemoveTriggerInternal(TriggerKey key, IJobDetail job = null)
         {
             var trigger = _triggerRepository.GetTrigger(key);
+            if (trigger == null)
+            {
+                return false;
+            }
 
             if (job == null)
             {
@@ -997,13 +1001,15 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private void StoreJobInternal(IJobDetail newJob, bool replaceExisting)
         {
-            if (replaceExisting)
+            var existingJob = _jobDetailRepository.JobExists(newJob.Key);
+
+            if (existingJob)
             {
-                var result = _jobDetailRepository.UpdateJob(new JobDetail(newJob, InstanceName), true);
-                if (result == 0)
+                if (!replaceExisting)
                 {
-                    throw new JobPersistenceException("Could not store job");
+                    throw new ObjectAlreadyExistsException(newJob);
                 }
+                _jobDetailRepository.UpdateJob(new JobDetail(newJob, InstanceName), true);
             }
             else
             {

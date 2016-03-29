@@ -50,6 +50,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 map.MapProperty(day => day.Minute);
                 map.MapProperty(day => day.Second);
                 map.MapCreator(day => new TimeOfDay(day.Hour, day.Minute, day.Second));
+                map.MapCreator(day => new TimeOfDay(day.Hour, day.Minute));
             });
 
             BsonClassMap.RegisterClassMap<JobDetail>(map =>

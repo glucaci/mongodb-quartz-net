@@ -26,6 +26,7 @@ namespace Quartz.Spi.MongoDbJobStore.Serializers
         {
             if (context.Reader.CurrentBsonType == BsonType.Null)
             {
+                context.Reader.ReadNull();
                 return null;
             }
 

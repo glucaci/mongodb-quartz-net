@@ -8,7 +8,7 @@ namespace Quartz.Spi.MongoDbJobStore.Serializers
     {
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, Type value)
         {
-            context.Writer.WriteString($"{value.FullName}, {value.Assembly.FullName}");
+            context.Writer.WriteString($"{value.FullName}, {value.Assembly.GetName().Name}");
         }
 
         public override Type Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
