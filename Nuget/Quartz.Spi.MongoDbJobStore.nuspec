@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>Quartz.Spi.MongoDbJobStore</id>
+        <version>1.0.0</version>
+        <title>MongoDB Job Store for Quartz.NET</title>
+        <authors>Chris Robison</authors>
+        <owners>chrisdrobison</owners>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>A MongoDB job store for Quartz.NET. This library targets the new MongoDB C# 2.0 driver.</description>
+        <dependencies>
+            <group targetFramework=".NETFramework4.5.2">
+                <dependency id="MongoDB.Driver" version="2.2.3" />
+                <dependency id="Common.Logging" version="3.3.1" />
+                <dependency id="Quartz" version="2.3.3" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="..\Quartz.Spi.MongoDbJobStore\bin\Release\Quartz.Spi.MongoDbJobStore.dll" target="lib\net452\Quartz.Spi.MongoDbJobStore.dll" />
+    </files>
+</package>

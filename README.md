@@ -19,3 +19,19 @@ I wanted to take this implementation in a different direction to help ease futur
 * Implemented a simple distributed lock on top of Mongo to help with future cluster support based on ideas shared [here](https://speakerdeck.com/raindev/distributed-locking-with-mongodb).
 * Imported the job store unit tests from Quartz.NET and them passing.
 
+## Basic Usage##
+
+```cs
+var properties = new NameValueCollection();
+properties[StdSchedulerFactory.PropertySchedulerInstanceName] = instanceName;
+properties[StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}";
+properties[StdSchedulerFactory.PropertyJobStoreType] = typeof (MongoDbJobStore).AssemblyQualifiedName;
+// I treat the database in the connection string as the one you want to connect to
+properties[$"{StdSchedulerFactory.PropertyJobStorePrefix}.{StdSchedulerFactory.PropertyDataSourceConnectionString}"] = "mongodb://localhost/quartz";
+// The prefix is optional
+properties[$"{StdSchedulerFactory.PropertyJobStorePrefix}.collectionPrefix"] = "prefix";
+
+var scheduler = new StdSchedulerFactory(properties);
+return scheduler.GetScheduler();
+```
+
