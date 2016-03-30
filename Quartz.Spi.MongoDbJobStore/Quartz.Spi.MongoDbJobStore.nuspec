@@ -17,6 +17,6 @@
         </dependencies>
     </metadata>
     <files>
-        <file src="..\Quartz.Spi.MongoDbJobStore\bin\Release\Quartz.Spi.MongoDbJobStore.dll" target="lib\net452\Quartz.Spi.MongoDbJobStore.dll" />
+        <file src="bin\Release\Quartz.Spi.MongoDbJobStore.dll" target="lib\net452\Quartz.Spi.MongoDbJobStore.dll" />
     </files>
 </package>
