@@ -6,6 +6,8 @@
         <title>MongoDB Job Store for Quartz.NET</title>
         <authors>Chris Robison</authors>
         <owners>chrisdrobison</owners>
+        <licenseUrl>https://github.com/chrisdrobison/mongodb-quartz-net/blob/master/LICENSE.txt</licenseUrl>
+        <projectUrl>https://github.com/chrisdrobison/mongodb-quartz-net</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>A MongoDB job store for Quartz.NET. This library targets the new MongoDB C# 2.0 driver.</description>
         <dependencies>
