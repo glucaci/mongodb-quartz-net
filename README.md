@@ -37,3 +37,9 @@ var scheduler = new StdSchedulerFactory(properties);
 return scheduler.GetScheduler();
 ```
 
+## Nuget ##
+
+```
+Install-Package Quartz.Spi.MongoDbJobStore
+```
+
