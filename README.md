@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/e7coq0xrmv3imbtt?svg=true)](https://ci.appveyor.com/project/chrisdrobison/mongodb-quartz-net)
+
 MongoDB Job Store for Quartz.NET
 ================================
 
