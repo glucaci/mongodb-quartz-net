@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Quartz.Impl.Triggers;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
@@ -46,6 +47,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public int Priority { get; set; }
 
+        [BsonRepresentation(BsonType.String)]
         public TriggerState State { get; set; }
 
         public bool ConcurrentExecutionDisallowed { get; set; }
