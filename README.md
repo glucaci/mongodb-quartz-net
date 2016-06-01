@@ -19,7 +19,7 @@ I wanted to take this implementation in a different direction to help ease futur
 * Followed the implementation of the Quartz.NET JobStoreSupport class very closely. The logic should be almost identical except where database calls are concerned. Should make future updates easier to implement.
 * Implemented a type safe MongoDB repository pattern. Everything is stored using a real class. I've implemented a factory pattern to handle the different trigger types. I've avoided using BsonDocument completely.
 * Implemented a simple distributed lock on top of Mongo to help with future cluster support based on ideas shared [here](https://speakerdeck.com/raindev/distributed-locking-with-mongodb).
-* Imported the job store unit tests from Quartz.NET and them passing.
+* Imported the job store unit tests from Quartz.NET and got them passing.
 
 ## Basic Usage##
 
