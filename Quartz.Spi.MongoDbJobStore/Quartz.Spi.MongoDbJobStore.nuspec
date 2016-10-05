@@ -18,7 +18,4 @@
             </group>
         </dependencies>
     </metadata>
-    <files>
-        <file src="..\Quartz.Spi.MongoDbJobStore\bin\Release\Quartz.Spi.MongoDbJobStore.dll" target="lib\net45\Quartz.Spi.MongoDbJobStore.dll" />
-    </files>
 </package>
