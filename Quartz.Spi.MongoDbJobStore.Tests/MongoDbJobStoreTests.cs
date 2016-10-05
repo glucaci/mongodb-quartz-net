@@ -200,6 +200,31 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         }
 
         [Test]
+        public void SimpleReschedulingTest()
+        {
+            var job = JobBuilder.Create<SimpleJob>().WithIdentity("job1", "group1").Build();
+            var trigger1 = TriggerBuilder.Create()
+                .ForJob(job)
+                .WithIdentity("trigger1", "group1")
+                .StartAt(DateTimeOffset.Now.AddSeconds(30))
+                .Build();
+
+            _scheduler.ScheduleJob(job, trigger1);
+
+            job = _scheduler.GetJobDetail(job.Key);
+            Assert.That(job, Is.Not.Null);
+
+            var trigger2 = TriggerBuilder.Create()
+                .ForJob(job)
+                .WithIdentity("trigger1", "group1")
+                .StartAt(DateTimeOffset.Now.AddSeconds(60))
+                .Build();
+            _scheduler.RescheduleJob(trigger1.Key, trigger2);
+            job = _scheduler.GetJobDetail(job.Key);
+            Assert.That(job, Is.Not.Null);
+        }
+
+        [Test]
         public void TestAbilityToFireImmediatelyWhenStartedBefore()
         {
             var jobExecTimestamps = new List<DateTime>();

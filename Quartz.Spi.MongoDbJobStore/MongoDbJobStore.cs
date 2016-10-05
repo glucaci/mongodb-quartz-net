@@ -867,9 +867,9 @@ namespace Quartz.Spi.MongoDbJobStore
                 throw new JobPersistenceException("New trigger is not related to the same job as the old trigger.");
             }
 
-            var removedTrigger = RemoveTriggerInternal(triggerKey);
+            var removedTrigger = _triggerRepository.DeleteTrigger(triggerKey);
             StoreTriggerInternal(newTrigger, job, false, Models.TriggerState.Waiting, false, false);
-            return removedTrigger;
+            return removedTrigger > 0;
         }
 
         private bool RemoveJobInternal(JobKey jobKey)
