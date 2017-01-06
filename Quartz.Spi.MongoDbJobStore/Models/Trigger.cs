@@ -47,6 +47,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
             CalendarName = trigger.CalendarName;
             MisfireInstruction = trigger.MisfireInstruction;
             Priority = trigger.Priority;
+            JobDataMap = trigger.JobDataMap;
         }
 
         [BsonId]
