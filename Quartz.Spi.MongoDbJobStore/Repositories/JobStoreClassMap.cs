@@ -21,25 +21,23 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 map.AutoMap();
                 map.MapProperty(key => key.Group);
                 map.MapProperty(key => key.Name);
-                map.AddKnownType(typeof (JobKey));
+                map.AddKnownType(typeof(JobKey));
             });
             BsonClassMap.RegisterClassMap<Key<TriggerKey>>(map =>
             {
                 map.AutoMap();
                 map.MapProperty(key => key.Group);
                 map.MapProperty(key => key.Name);
-                map.AddKnownType(typeof (TriggerKey));
+                map.AddKnownType(typeof(TriggerKey));
             });
             BsonClassMap.RegisterClassMap<JobKey>(map =>
             {
-                map.AutoMap();
                 map.MapCreator(jobKey => new JobKey(jobKey.Name));
                 map.MapCreator(jobKey => new JobKey(jobKey.Name, jobKey.Group));
             });
 
             BsonClassMap.RegisterClassMap<TriggerKey>(map =>
             {
-                map.AutoMap();
                 map.MapCreator(triggerKey => new TriggerKey(triggerKey.Name));
                 map.MapCreator(triggerKey => new TriggerKey(triggerKey.Name, triggerKey.Group));
             });
