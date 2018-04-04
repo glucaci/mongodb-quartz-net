@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Serializers;
 
 namespace Quartz.Spi.MongoDbJobStore.Serializers
 {
-    internal class SetSerializer<T> : SerializerBase<Collection.ISet<T>>
+    internal class SetSerializer<T> : SerializerBase<ISet<T>>
     {
         private readonly IBsonSerializer _serializer;
 
@@ -13,15 +13,15 @@ namespace Quartz.Spi.MongoDbJobStore.Serializers
             _serializer = BsonSerializer.LookupSerializer(typeof (IEnumerable<T>));
         }
 
-        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, Collection.ISet<T> value)
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, ISet<T> value)
         {
             _serializer.Serialize(context, args, value);
         }
 
-        public override Collection.ISet<T> Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        public override ISet<T> Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
         {
             var enumerable = (IEnumerable<T>)_serializer.Deserialize(context, args);
-            return new Collection.HashSet<T>(enumerable);
+            return new HashSet<T>(enumerable);
         }
     }
 }

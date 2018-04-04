@@ -1,14 +1,15 @@
 using System;
 using System.Threading;
 using NUnit.Framework;
-using Quartz.Collection;
 using Quartz.Impl;
 using Quartz.Impl.Calendar;
 using Quartz.Impl.Matchers;
 using Quartz.Impl.Triggers;
-using Quartz.Job;
+//using Quartz.Job;
 using Quartz.Spi;
 using Quartz.Util;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Quartz.Tests.Integration.Impl
 {
@@ -20,7 +21,7 @@ namespace Quartz.Tests.Integration.Impl
             {
                 if (clearJobs)
                 {
-                    scheduler.Clear();
+                    scheduler.Clear().Wait();
                 }
 
                 if (scheduleJobs)
@@ -29,40 +30,40 @@ namespace Quartz.Tests.Integration.Impl
                     ICalendar holidayCalendar = new HolidayCalendar();
 
                     // QRTZNET-86
-                    var t = scheduler.GetTrigger(new TriggerKey("NonExistingTrigger", "NonExistingGroup"));
+                    var t = scheduler.GetTrigger(new TriggerKey("NonExistingTrigger", "NonExistingGroup")).Result;
                     Assert.IsNull(t);
 
                     var cal = new AnnualCalendar();
-                    scheduler.AddCalendar("annualCalendar", cal, false, true);
+                    scheduler.AddCalendar("annualCalendar", cal, false, true).Wait();
 
                     IOperableTrigger calendarsTrigger = new SimpleTriggerImpl("calendarsTrigger", "test", 20,
                         TimeSpan.FromMilliseconds(5));
                     calendarsTrigger.CalendarName = "annualCalendar";
 
                     var jd = new JobDetailImpl("testJob", "test", typeof (NoOpJob));
-                    scheduler.ScheduleJob(jd, calendarsTrigger);
+                    scheduler.ScheduleJob(jd, calendarsTrigger).Wait();
 
                     // QRTZNET-93
-                    scheduler.AddCalendar("annualCalendar", cal, true, true);
+                    scheduler.AddCalendar("annualCalendar", cal, true, true).Wait();
 
-                    scheduler.AddCalendar("baseCalendar", new BaseCalendar(), false, true);
-                    scheduler.AddCalendar("cronCalendar", cronCalendar, false, true);
+                    scheduler.AddCalendar("baseCalendar", new BaseCalendar(), false, true).Wait();
+                    scheduler.AddCalendar("cronCalendar", cronCalendar, false, true).Wait();
                     scheduler.AddCalendar("dailyCalendar",
-                        new DailyCalendar(DateTime.Now.Date, DateTime.Now.AddMinutes(1)), false, true);
-                    scheduler.AddCalendar("holidayCalendar", holidayCalendar, false, true);
-                    scheduler.AddCalendar("monthlyCalendar", new MonthlyCalendar(), false, true);
-                    scheduler.AddCalendar("weeklyCalendar", new WeeklyCalendar(), false, true);
+                        new DailyCalendar(DateTime.Now.Date, DateTime.Now.AddMinutes(1)), false, true).Wait();
+                    scheduler.AddCalendar("holidayCalendar", holidayCalendar, false, true).Wait();
+                    scheduler.AddCalendar("monthlyCalendar", new MonthlyCalendar(), false, true).Wait();
+                    scheduler.AddCalendar("weeklyCalendar", new WeeklyCalendar(), false, true).Wait();
 
-                    scheduler.AddCalendar("cronCalendar", cronCalendar, true, true);
-                    scheduler.AddCalendar("holidayCalendar", holidayCalendar, true, true);
+                    scheduler.AddCalendar("cronCalendar", cronCalendar, true, true).Wait();
+                    scheduler.AddCalendar("holidayCalendar", holidayCalendar, true, true).Wait();
 
-                    Assert.IsNotNull(scheduler.GetCalendar("annualCalendar"));
+                    Assert.IsNotNull(scheduler.GetCalendar("annualCalendar").Result);
 
                     var lonelyJob = new JobDetailImpl("lonelyJob", "lonelyGroup", typeof (SimpleRecoveryJob));
                     lonelyJob.Durable = true;
                     lonelyJob.RequestsRecovery = true;
-                    scheduler.AddJob(lonelyJob, false);
-                    scheduler.AddJob(lonelyJob, true);
+                    scheduler.AddJob(lonelyJob, false).Wait();
+                    scheduler.AddJob(lonelyJob, true).Wait();
 
                     var schedId = scheduler.SchedulerInstanceId;
 
@@ -79,10 +80,10 @@ namespace Quartz.Tests.Integration.Impl
                     trigger.EndTimeUtc = DateTime.UtcNow.AddYears(10);
 
                     trigger.StartTimeUtc = DateTime.Now.AddMilliseconds(1000L);
-                    scheduler.ScheduleJob(job, trigger);
+                    scheduler.ScheduleJob(job, trigger).Wait();
 
                     // check that trigger was stored
-                    var persisted = scheduler.GetTrigger(new TriggerKey("trig_" + count, schedId));
+                    var persisted = scheduler.GetTrigger(new TriggerKey("trig_" + count, schedId)).Result;
                     Assert.IsNotNull(persisted);
                     Assert.IsTrue(persisted is SimpleTriggerImpl);
 
@@ -94,7 +95,7 @@ namespace Quartz.Tests.Integration.Impl
                     trigger = new SimpleTriggerImpl("trig_" + count, schedId, 20, TimeSpan.FromSeconds(5));
 
                     trigger.StartTimeUtc = DateTime.Now.AddMilliseconds(2000L);
-                    scheduler.ScheduleJob(job, trigger);
+                    scheduler.ScheduleJob(job, trigger).Wait();
 
                     count++;
                     job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryStatefulJob));
@@ -104,7 +105,7 @@ namespace Quartz.Tests.Integration.Impl
                     trigger = new SimpleTriggerImpl("trig_" + count, schedId, 20, TimeSpan.FromSeconds(3));
 
                     trigger.StartTimeUtc = DateTime.Now.AddMilliseconds(1000L);
-                    scheduler.ScheduleJob(job, trigger);
+                    scheduler.ScheduleJob(job, trigger).Wait();
 
                     count++;
                     job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
@@ -114,7 +115,7 @@ namespace Quartz.Tests.Integration.Impl
                     trigger = new SimpleTriggerImpl("trig_" + count, schedId, 20, TimeSpan.FromSeconds(4));
 
                     trigger.StartTimeUtc = DateTime.Now.AddMilliseconds(1000L);
-                    scheduler.ScheduleJob(job, trigger);
+                    scheduler.ScheduleJob(job, trigger).Wait();
 
                     count++;
                     job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
@@ -122,7 +123,7 @@ namespace Quartz.Tests.Integration.Impl
                     // the scheduler went down...
                     job.RequestsRecovery = true;
                     trigger = new SimpleTriggerImpl("trig_" + count, schedId, 20, TimeSpan.FromMilliseconds(4500));
-                    scheduler.ScheduleJob(job, trigger);
+                    scheduler.ScheduleJob(job, trigger).Wait();
 
                     count++;
                     job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
@@ -133,7 +134,7 @@ namespace Quartz.Tests.Integration.Impl
                     ct.JobDataMap.Add("key", "value");
                     ct.StartTimeUtc = DateTime.Now.AddMilliseconds(1000);
 
-                    scheduler.ScheduleJob(job, ct);
+                    scheduler.ScheduleJob(job, ct).Wait();
 
                     count++;
                     job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
@@ -144,25 +145,25 @@ namespace Quartz.Tests.Integration.Impl
                         new TimeOfDay(23, 30, 0), IntervalUnit.Hour, 1);
                     nt.StartTimeUtc = DateTime.Now.Date.AddMilliseconds(1000);
 
-                    scheduler.ScheduleJob(job, nt);
+                    scheduler.ScheduleJob(job, nt).Wait();
 
                     var nt2 = new DailyTimeIntervalTriggerImpl();
                     nt2.Key = new TriggerKey("nth_trig2_" + count, schedId);
                     nt2.StartTimeUtc = DateTime.Now.Date.AddMilliseconds(1000);
                     nt2.JobKey = job.Key;
-                    scheduler.ScheduleJob(nt2);
+                    scheduler.ScheduleJob(nt2).Wait();
 
                     // GitHub issue #92
-                    scheduler.GetTrigger(nt2.Key);
+                    scheduler.GetTrigger(nt2.Key).Wait();
 
                     // GitHub issue #98
                     nt2.StartTimeOfDay = new TimeOfDay(1, 2, 3);
                     nt2.EndTimeOfDay = new TimeOfDay(2, 3, 4);
 
-                    scheduler.UnscheduleJob(nt2.Key);
-                    scheduler.ScheduleJob(nt2);
+                    scheduler.UnscheduleJob(nt2.Key).Wait();
+                    scheduler.ScheduleJob(nt2).Wait();
 
-                    var triggerFromDb = (IDailyTimeIntervalTrigger) scheduler.GetTrigger(nt2.Key);
+                    var triggerFromDb = (IDailyTimeIntervalTrigger) scheduler.GetTrigger(nt2.Key).Result;
                     Assert.That(triggerFromDb.StartTimeOfDay.Hour, Is.EqualTo(1));
                     Assert.That(triggerFromDb.StartTimeOfDay.Minute, Is.EqualTo(2));
                     Assert.That(triggerFromDb.StartTimeOfDay.Second, Is.EqualTo(3));
@@ -181,65 +182,66 @@ namespace Quartz.Tests.Integration.Impl
                         8);
                     intervalTrigger.JobKey = job.Key;
 
-                    scheduler.ScheduleJob(intervalTrigger);
+                    scheduler.ScheduleJob(intervalTrigger).Wait();
 
                     // bulk operations
-                    var info = new System.Collections.Generic.Dictionary<IJobDetail, ISet<ITrigger>>();
                     IJobDetail detail = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
                     ITrigger simple = new SimpleTriggerImpl("trig_" + count, schedId, 20,
                         TimeSpan.FromMilliseconds(4500));
-                    var triggers = new HashSet<ITrigger>();
-                    triggers.Add(simple);
-                    info[detail] = triggers;
+                    var triggers = (IReadOnlyCollection<ITrigger>)new HashSet<ITrigger> {simple};
+                    var info = (IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>)new Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>>
+                    {
+                        [detail] = triggers
+                    };
 
-                    scheduler.ScheduleJobs(info, true);
+                    scheduler.ScheduleJobs(info, true).Wait();
 
-                    Assert.IsTrue(scheduler.CheckExists(detail.Key));
-                    Assert.IsTrue(scheduler.CheckExists(simple.Key));
+                    Assert.IsTrue(scheduler.CheckExists(detail.Key).Result);
+                    Assert.IsTrue(scheduler.CheckExists(simple.Key).Result);
 
                     // QRTZNET-243
-                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("a").DeepClone());
-                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("a").DeepClone());
-                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("a").DeepClone());
-                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("a").DeepClone());
+                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("a").DeepClone()).Wait();
+                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("a").DeepClone()).Wait();
+                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("a").DeepClone()).Wait();
+                    scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("a").DeepClone()).Wait();
 
-                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("a").DeepClone());
-                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("a").DeepClone());
-                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("a").DeepClone());
-                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("a").DeepClone());
+                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("a").DeepClone()).Wait();
+                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("a").DeepClone()).Wait();
+                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("a").DeepClone()).Wait();
+                    scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("a").DeepClone()).Wait();
 
-                    scheduler.Start();
+                    scheduler.Start().Wait();
 
                     Thread.Sleep(TimeSpan.FromSeconds(3));
 
-                    scheduler.PauseAll();
+                    scheduler.PauseAll().Wait();
 
-                    scheduler.ResumeAll();
+                    scheduler.ResumeAll().Wait();
 
-                    scheduler.PauseJob(new JobKey("job_1", schedId));
+                    scheduler.PauseJob(new JobKey("job_1", schedId)).Wait();
 
-                    scheduler.ResumeJob(new JobKey("job_1", schedId));
+                    scheduler.ResumeJob(new JobKey("job_1", schedId)).Wait();
 
-                    scheduler.PauseJobs(GroupMatcher<JobKey>.GroupEquals(schedId));
+                    scheduler.PauseJobs(GroupMatcher<JobKey>.GroupEquals(schedId)).Wait();
 
                     Thread.Sleep(TimeSpan.FromSeconds(1));
 
-                    scheduler.ResumeJobs(GroupMatcher<JobKey>.GroupEquals(schedId));
+                    scheduler.ResumeJobs(GroupMatcher<JobKey>.GroupEquals(schedId)).Wait();
 
-                    scheduler.PauseTrigger(new TriggerKey("trig_2", schedId));
-                    scheduler.ResumeTrigger(new TriggerKey("trig_2", schedId));
+                    scheduler.PauseTrigger(new TriggerKey("trig_2", schedId)).Wait();
+                    scheduler.ResumeTrigger(new TriggerKey("trig_2", schedId)).Wait();
 
-                    scheduler.PauseTriggers(GroupMatcher<TriggerKey>.GroupEquals(schedId));
+                    scheduler.PauseTriggers(GroupMatcher<TriggerKey>.GroupEquals(schedId)).Wait();
 
-                    Assert.AreEqual(1, scheduler.GetPausedTriggerGroups().Count);
+                    Assert.AreEqual(1, scheduler.GetPausedTriggerGroups().Result.Count);
 
                     Thread.Sleep(TimeSpan.FromSeconds(3));
-                    scheduler.ResumeTriggers(GroupMatcher<TriggerKey>.GroupEquals(schedId));
+                    scheduler.ResumeTriggers(GroupMatcher<TriggerKey>.GroupEquals(schedId)).Wait();
 
-                    Assert.IsNotNull(scheduler.GetTrigger(new TriggerKey("trig_2", schedId)));
-                    Assert.IsNotNull(scheduler.GetJobDetail(new JobKey("job_1", schedId)));
-                    Assert.IsNotNull(scheduler.GetMetaData());
-                    Assert.IsNotNull(scheduler.GetCalendar("weeklyCalendar"));
+                    Assert.IsNotNull(scheduler.GetTrigger(new TriggerKey("trig_2", schedId)).Result);
+                    Assert.IsNotNull(scheduler.GetJobDetail(new JobKey("job_1", schedId)).Result);
+                    Assert.IsNotNull(scheduler.GetMetaData().Result);
+                    Assert.IsNotNull(scheduler.GetCalendar("weeklyCalendar").Result);
 
                     var genericjobKey = new JobKey("genericJob", "genericGroup");
                     var genericJob = JobBuilder.Create<GenericJobType<string>>()
@@ -247,119 +249,127 @@ namespace Quartz.Tests.Integration.Impl
                         .StoreDurably()
                         .Build();
 
-                    scheduler.AddJob(genericJob, false);
+                    scheduler.AddJob(genericJob, false).Wait();
 
-                    genericJob = scheduler.GetJobDetail(genericjobKey);
+                    genericJob = scheduler.GetJobDetail(genericjobKey).Result;
                     Assert.That(genericJob, Is.Not.Null);
-                    scheduler.TriggerJob(genericjobKey);
+                    scheduler.TriggerJob(genericjobKey).Wait();
 
                     Thread.Sleep(TimeSpan.FromSeconds(20));
 
                     Assert.That(GenericJobType<string>.TriggeredCount, Is.EqualTo(1));
-                    scheduler.Standby();
+                    scheduler.Standby().Wait();
 
-                    CollectionAssert.IsNotEmpty(scheduler.GetCalendarNames());
-                    CollectionAssert.IsNotEmpty(scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(schedId)));
+                    CollectionAssert.IsNotEmpty(scheduler.GetCalendarNames().Result);
+                    CollectionAssert.IsNotEmpty(scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(schedId)).Result);
 
-                    CollectionAssert.IsNotEmpty(scheduler.GetTriggersOfJob(new JobKey("job_2", schedId)));
-                    Assert.IsNotNull(scheduler.GetJobDetail(new JobKey("job_2", schedId)));
+                    CollectionAssert.IsNotEmpty(scheduler.GetTriggersOfJob(new JobKey("job_2", schedId)).Result);
+                    Assert.IsNotNull(scheduler.GetJobDetail(new JobKey("job_2", schedId)).Result);
 
-                    scheduler.DeleteCalendar("cronCalendar");
-                    scheduler.DeleteCalendar("holidayCalendar");
-                    scheduler.DeleteJob(new JobKey("lonelyJob", "lonelyGroup"));
-                    scheduler.DeleteJob(job.Key);
+                    scheduler.DeleteCalendar("cronCalendar").Wait();
+                    scheduler.DeleteCalendar("holidayCalendar").Wait();
+                    scheduler.DeleteJob(new JobKey("lonelyJob", "lonelyGroup")).Wait();
+                    scheduler.DeleteJob(job.Key).Wait();
 
-                    scheduler.GetJobGroupNames();
-                    scheduler.GetCalendarNames();
-                    scheduler.GetTriggerGroupNames();
+                    scheduler.GetJobGroupNames().Wait();
+                    scheduler.GetCalendarNames().Wait();
+                    scheduler.GetTriggerGroupNames().Wait();
 
                     TestMatchers(scheduler);
                 }
             }
             finally
             {
-                scheduler.Shutdown(false);
+                scheduler.Shutdown(false).Wait();
             }
         }
 
         private void TestMatchers(IScheduler scheduler)
         {
-            scheduler.Clear();
+            scheduler.Clear().Wait();
 
             var job = JobBuilder.Create<NoOpJob>().WithIdentity("job1", "aaabbbccc").StoreDurably().Build();
-            scheduler.AddJob(job, true);
+            scheduler.AddJob(job, true).Wait();
             var schedule = SimpleScheduleBuilder.Create();
             var trigger =
                 TriggerBuilder.Create().WithIdentity("trig1", "aaabbbccc").WithSchedule(schedule).ForJob(job).Build();
-            scheduler.ScheduleJob(trigger);
+            scheduler.ScheduleJob(trigger).Wait();
 
             job = JobBuilder.Create<NoOpJob>().WithIdentity("job1", "xxxyyyzzz").StoreDurably().Build();
-            scheduler.AddJob(job, true);
+            scheduler.AddJob(job, true).Wait();
             schedule = SimpleScheduleBuilder.Create();
             trigger =
                 TriggerBuilder.Create().WithIdentity("trig1", "xxxyyyzzz").WithSchedule(schedule).ForJob(job).Build();
-            scheduler.ScheduleJob(trigger);
+            scheduler.ScheduleJob(trigger).Wait();
 
             job = JobBuilder.Create<NoOpJob>().WithIdentity("job2", "xxxyyyzzz").StoreDurably().Build();
-            scheduler.AddJob(job, true);
+            scheduler.AddJob(job, true).Wait();
             schedule = SimpleScheduleBuilder.Create();
             trigger =
                 TriggerBuilder.Create().WithIdentity("trig2", "xxxyyyzzz").WithSchedule(schedule).ForJob(job).Build();
-            scheduler.ScheduleJob(trigger);
+            scheduler.ScheduleJob(trigger).Wait();
 
-            var jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.AnyGroup());
+            var jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.AnyGroup()).Result;
             Assert.That(jkeys.Count, Is.EqualTo(3), "Wrong number of jobs found by anything matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("xxxyyyzzz"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("xxxyyyzzz")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by equals matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("aaabbbccc"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("aaabbbccc")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by equals matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("aa"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("aa")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by starts with matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("xx"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("xx")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by starts with matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("cc"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("cc")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by ends with matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("zzz"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("zzz")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by ends with matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("bc"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("bc")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by contains with matcher");
 
-            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("yz"));
+            jkeys = scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("yz")).Result;
             Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by contains with matcher");
 
-            var tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.AnyGroup());
+            var tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.AnyGroup()).Result;
             Assert.That(tkeys.Count, Is.EqualTo(3), "Wrong number of triggers found by anything matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("xxxyyyzzz"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("xxxyyyzzz")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by equals matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("aaabbbccc"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("aaabbbccc")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by equals matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("aa"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("aa")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by starts with matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("xx"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("xx")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by starts with matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("cc"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("cc")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by ends with matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("zzz"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("zzz")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by ends with matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("bc"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("bc")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by contains with matcher");
 
-            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("yz"));
+            tkeys = scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("yz")).Result;
             Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by contains with matcher");
+        }
+    }
+
+    public class NoOpJob : IJob
+    {
+        public Task Execute(IJobExecutionContext context)
+        {
+            return Task.FromResult(0);
         }
     }
 
@@ -367,9 +377,10 @@ namespace Quartz.Tests.Integration.Impl
     {
         public static int TriggeredCount { get; private set; }
 
-        public void Execute(IJobExecutionContext context)
+        public Task Execute(IJobExecutionContext context)
         {
             TriggeredCount++;
+            return Task.FromResult(0);
         }
     }
 
@@ -382,7 +393,7 @@ namespace Quartz.Tests.Integration.Impl
         ///     <see cref="ITrigger" /> fires that is associated with
         ///     the <see cref="IJob" />.
         /// </summary>
-        public virtual void Execute(IJobExecutionContext context)
+        public virtual Task Execute(IJobExecutionContext context)
         {
             // delay for ten seconds
             try
@@ -405,6 +416,7 @@ namespace Quartz.Tests.Integration.Impl
             }
             count++;
             data.Put(Count, count);
+            return Task.FromResult(0);
         }
     }
 

@@ -8,7 +8,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests.Jobs
 {
     public class SimpleJob : IJob
     {
-        public void Execute(IJobExecutionContext context)
+        public Task Execute(IJobExecutionContext context)
         {
             throw new NotImplementedException();
         }

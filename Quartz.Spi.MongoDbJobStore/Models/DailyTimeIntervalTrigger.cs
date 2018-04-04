@@ -51,7 +51,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
                 RepeatInterval = RepeatInterval,
                 StartTimeOfDay = StartTimeOfDay ?? new TimeOfDay(0, 0, 0),
                 EndTimeOfDay = EndTimeOfDay ?? new TimeOfDay(23, 59, 59),
-                DaysOfWeek = new Collection.HashSet<DayOfWeek>(DaysOfWeek),
+                DaysOfWeek = (IReadOnlyCollection<DayOfWeek>)new HashSet<DayOfWeek>(DaysOfWeek),
                 TimesTriggered = TimesTriggered,
                 TimeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZone)
             };

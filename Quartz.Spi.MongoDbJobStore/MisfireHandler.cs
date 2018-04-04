@@ -60,14 +60,14 @@ namespace Quartz.Spi.MongoDbJobStore
                     {
                         Thread.Sleep(timeToSleep);
                     }
-                    catch (ThreadInterruptedException ex)
+                    catch (ThreadInterruptedException)
                     {
                     }
                 }
             }
         }
 
-        private JobStoreSupport.RecoverMisfiredJobsResult Manage()
+        private RecoverMisfiredJobsResult Manage()
         {
             try
             {
@@ -85,7 +85,7 @@ namespace Quartz.Spi.MongoDbJobStore
                 _numFails++;
             }
 
-            return JobStoreSupport.RecoverMisfiredJobsResult.NoOp;
+            return RecoverMisfiredJobsResult.NoOp;
         }
     }
 }

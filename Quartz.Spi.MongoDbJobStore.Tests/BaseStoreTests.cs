@@ -12,17 +12,19 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
         protected IScheduler CreateScheduler(string instanceName = "QUARTZ_TEST")
         {
-            var properties = new NameValueCollection();
-            properties[StdSchedulerFactory.PropertySchedulerInstanceName] = instanceName;
-            properties[StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}";
-            properties[StdSchedulerFactory.PropertyJobStoreType] = typeof (MongoDbJobStore).AssemblyQualifiedName;
-            properties[
-                $"{StdSchedulerFactory.PropertyJobStorePrefix}.{StdSchedulerFactory.PropertyDataSourceConnectionString}"
-                ] = "mongodb://localhost/quartz";
-            properties[$"{StdSchedulerFactory.PropertyJobStorePrefix}.collectionPrefix"] = "prefix";
+            var properties = new NameValueCollection
+            {
+                ["quartz.serializer.type"] = "binary",
+                [StdSchedulerFactory.PropertySchedulerInstanceName] = instanceName,
+                [StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}",
+                [StdSchedulerFactory.PropertyJobStoreType] = typeof(MongoDbJobStore).AssemblyQualifiedName,
+                [$"{StdSchedulerFactory.PropertyJobStorePrefix}.{StdSchedulerFactory.PropertyDataSourceConnectionString}"]
+                    = "mongodb://localhost/quartz",
+                [$"{StdSchedulerFactory.PropertyJobStorePrefix}.collectionPrefix"] = "prefix"
+            };
 
             var scheduler = new StdSchedulerFactory(properties);
-            return scheduler.GetScheduler();
+            return scheduler.GetScheduler().Result;
         }
     }
 }
