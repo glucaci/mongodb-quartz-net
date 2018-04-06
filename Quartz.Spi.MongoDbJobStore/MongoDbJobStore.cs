@@ -193,17 +193,20 @@ namespace Quartz.Spi.MongoDbJobStore
             return Task.FromResult(true);
         }
 
-        public Task StoreJobAndTrigger(IJobDetail newJob, IOperableTrigger newTrigger, CancellationToken token = default(CancellationToken))
+        public async Task StoreJobAndTrigger(IJobDetail newJob, IOperableTrigger newTrigger, CancellationToken cancellationToken = default(CancellationToken))
         {
             try
             {
                 using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
                     StoreJobInternal(newJob, false);
-                    StoreTriggerInternal(newTrigger, newJob, false, Models.TriggerState.Waiting, false, false);
+                    await StoreTriggerInternal(newTrigger, newJob, false, Models.TriggerState.Waiting, false, false,
+                        cancellationToken);
                 }
-
-                return Task.FromResult(true);
+            }
+            catch (AggregateException ex)
+            {
+                throw new JobPersistenceException(ex.InnerExceptions[0].Message, ex.InnerExceptions[0]);
             }
             catch (Exception ex)
             {
@@ -240,7 +243,7 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public Task StoreJobsAndTriggers(IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>> triggersAndJobs, bool replace, CancellationToken token = default(CancellationToken))
+        public async Task StoreJobsAndTriggers(IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>> triggersAndJobs, bool replace, CancellationToken cancellationToken = default(CancellationToken))
         {
             try
             {
@@ -251,12 +254,14 @@ namespace Quartz.Spi.MongoDbJobStore
                         StoreJobInternal(job, replace);
                         foreach (var trigger in triggersAndJobs[job])
                         {
-                            StoreTriggerInternal((IOperableTrigger) trigger, job, replace, Models.TriggerState.Waiting, false, false);
+                            await StoreTriggerInternal((IOperableTrigger) trigger, job, replace, Models.TriggerState.Waiting, false, false, cancellationToken);
                         }
                     }
                 }
-
-                return Task.FromResult(true);
+            }
+            catch (AggregateException ex)
+            {
+                throw new JobPersistenceException(ex.InnerExceptions[0].Message, ex.InnerExceptions[0]);
             }
             catch (Exception ex)
             {
@@ -299,11 +304,11 @@ namespace Quartz.Spi.MongoDbJobStore
             return Task.FromResult(_jobDetailRepository.GetJob(jobKey)?.GetJobDetail());
         }
 
-        public Task StoreTrigger(IOperableTrigger newTrigger, bool replaceExisting, CancellationToken token = default(CancellationToken))
+        public Task StoreTrigger(IOperableTrigger newTrigger, bool replaceExisting, CancellationToken cancellationToken = default(CancellationToken))
         {
             using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
             {
-                return StoreTriggerInternal(newTrigger, null, replaceExisting, Models.TriggerState.Waiting, false, false, token);
+                return StoreTriggerInternal(newTrigger, null, replaceExisting, Models.TriggerState.Waiting, false, false, cancellationToken);
             }
         }
 
@@ -328,8 +333,7 @@ namespace Quartz.Spi.MongoDbJobStore
             {
                 using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
-                    return Task.FromResult(triggerKeys.Aggregate(true,
-                        (current, triggerKey) => current && RemoveTriggerInternal(triggerKey)));
+                    return Task.FromResult(triggerKeys.Aggregate(true, (current, triggerKey) => current && RemoveTriggerInternal(triggerKey)));
                 }
             }
             catch (Exception ex)
@@ -588,7 +592,7 @@ namespace Quartz.Spi.MongoDbJobStore
             {
                 using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
-                    return ResumeTriggerInternal(triggerKey);
+                    return ResumeTriggerInternal(triggerKey, token);
                 }
             }
             catch (Exception ex)
@@ -612,25 +616,25 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public Task<IReadOnlyCollection<string>> GetPausedTriggerGroups(CancellationToken token = default(CancellationToken))
+        public Task<IReadOnlyCollection<string>> GetPausedTriggerGroups(CancellationToken cancellationToken = default(CancellationToken))
         {
             return Task.FromResult((IReadOnlyCollection<string>)new HashSet<string>(_pausedTriggerGroupRepository.GetPausedTriggerGroups()));
         }
 
-        public Task ResumeJob(JobKey jobKey, CancellationToken token = default(CancellationToken))
+        public async Task ResumeJob(JobKey jobKey, CancellationToken cancellationToken = default(CancellationToken))
         {
             try
             {
                 using (_lockManager.AcquireLock(LockType.TriggerAccess, InstanceId))
                 {
                     var triggers = _triggerRepository.GetTriggers(jobKey);
-                    foreach (var trigger in triggers)
-                    {
-                        ResumeTriggerInternal(trigger.GetTrigger().Key);
-                    }
+                    await Task.WhenAll(triggers.Select(trigger =>
+                        ResumeTriggerInternal(trigger.GetTrigger().Key, cancellationToken)));
                 }
-
-                return Task.FromResult(true);
+            }
+            catch (AggregateException ex)
+            {
+                throw new JobPersistenceException(ex.InnerExceptions[0].Message, ex.InnerExceptions[0]);
             }
             catch (Exception ex)
             {
@@ -638,7 +642,7 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public Task<IReadOnlyCollection<string>> ResumeJobs(GroupMatcher<JobKey> matcher, CancellationToken token = default(CancellationToken))
+        public async Task<IReadOnlyCollection<string>> ResumeJobs(GroupMatcher<JobKey> matcher, CancellationToken cancellationToken = default(CancellationToken))
         {
             try
             {
@@ -648,13 +652,14 @@ namespace Quartz.Spi.MongoDbJobStore
                     foreach (var jobKey in jobKeys)
                     {
                         var triggers = _triggerRepository.GetTriggers(jobKey);
-                        foreach (var trigger in triggers)
-                        {
-                            ResumeTriggerInternal(trigger.GetTrigger().Key);
-                        }
+                        await Task.WhenAll(triggers.Select(trigger => ResumeTriggerInternal(trigger.GetTrigger().Key, cancellationToken)));
                     }
-                    return Task.FromResult((IReadOnlyCollection<string>)new HashSet<string>(jobKeys.Select(key => key.Group)));
+                    return (IReadOnlyCollection<string>)new HashSet<string>(jobKeys.Select(key => key.Group));
                 }
+            }
+            catch (AggregateException ex)
+            {
+                throw new JobPersistenceException(ex.InnerExceptions[0].Message, ex.InnerExceptions[0]);
             }
             catch (Exception ex)
             {
@@ -867,11 +872,9 @@ namespace Quartz.Spi.MongoDbJobStore
         private void PauseAllInternal()
         {
             var groupNames = _triggerRepository.GetTriggerGroupNames();
-            foreach (var groupName in groupNames)
-            {
-                PauseTriggerGroupInternal(GroupMatcher<TriggerKey>.GroupEquals(groupName));
-            }
 
+            Task.WhenAll(groupNames.Select(groupName => PauseTriggerGroupInternal(GroupMatcher<TriggerKey>.GroupEquals(groupName)))).Wait();
+            
             if (!_pausedTriggerGroupRepository.IsTriggerGroupPaused(AllGroupsPaused))
             {
                 _pausedTriggerGroupRepository.AddPausedTriggerGroup(AllGroupsPaused);
@@ -894,7 +897,7 @@ namespace Quartz.Spi.MongoDbJobStore
             }
 
             var removedTrigger = _triggerRepository.DeleteTrigger(triggerKey);
-            StoreTriggerInternal(newTrigger, job, false, Models.TriggerState.Waiting, false, false);
+            StoreTriggerInternal(newTrigger, job, false, Models.TriggerState.Waiting, false, false).Wait();
             return removedTrigger > 0;
         }
 
@@ -926,7 +929,7 @@ namespace Quartz.Spi.MongoDbJobStore
                 {
                     if (RemoveJobInternal(job.Key))
                     {
-                        _schedulerSignaler.NotifySchedulerListenersJobDeleted(job.Key);
+                        _schedulerSignaler.NotifySchedulerListenersJobDeleted(job.Key).Wait();
                     }
                 }
             }
@@ -944,7 +947,7 @@ namespace Quartz.Spi.MongoDbJobStore
             return _calendarRepository.DeleteCalendar(calendarName) > 0;
         }
 
-        private Task ResumeTriggerInternal(TriggerKey triggerKey)
+        private Task ResumeTriggerInternal(TriggerKey triggerKey, CancellationToken cancellationToken = default(CancellationToken))
         {
             var trigger = _triggerRepository.GetTrigger(triggerKey);
             if (trigger?.NextFireTime == null || trigger.NextFireTime == DateTime.MinValue)
@@ -970,7 +973,7 @@ namespace Quartz.Spi.MongoDbJobStore
             return Task.FromResult(true);
         }
 
-        private Task<IReadOnlyCollection<string>> ResumeTriggersInternal(GroupMatcher<TriggerKey> matcher, CancellationToken token = default(CancellationToken))
+        private async Task<IReadOnlyCollection<string>> ResumeTriggersInternal(GroupMatcher<TriggerKey> matcher, CancellationToken token = default(CancellationToken))
         {
             _pausedTriggerGroupRepository.DeletePausedTriggerGroup(matcher);
             var groups = new HashSet<string>();
@@ -978,20 +981,16 @@ namespace Quartz.Spi.MongoDbJobStore
             var keys = _triggerRepository.GetTriggerKeys(matcher);
             foreach (var triggerKey in keys)
             {
-                ResumeTriggerInternal(triggerKey);
+                await ResumeTriggerInternal(triggerKey, token);
                 groups.Add(triggerKey.Group);
             }
-            return Task.FromResult((IReadOnlyCollection<string>)groups.ToList());
+            return groups.ToList();
         }
 
         private void ResumeAllInternal()
         {
             var groupNames = _triggerRepository.GetTriggerGroupNames();
-            foreach (var groupName in groupNames)
-            {
-                ResumeTriggersInternal(GroupMatcher<TriggerKey>.GroupEquals(groupName));
-            }
-
+            Task.WhenAll(groupNames.Select(groupName => ResumeTriggersInternal(GroupMatcher<TriggerKey>.GroupEquals(groupName)))).Wait();
             _pausedTriggerGroupRepository.DeletePausedTriggerGroup(AllGroupsPaused);
         }
 
@@ -1017,7 +1016,7 @@ namespace Quartz.Spi.MongoDbJobStore
                     {
                         var quartzTrigger = (IOperableTrigger) trigger.GetTrigger();
                         quartzTrigger.UpdateWithNewCalendar(calendar, MisfireThreshold);
-                        StoreTriggerInternal(quartzTrigger, null, true, Models.TriggerState.Waiting, false, false);
+                        StoreTriggerInternal(quartzTrigger, null, true, Models.TriggerState.Waiting, false, false, token).Wait(token);
                     }
                 }
             }
@@ -1184,7 +1183,7 @@ namespace Quartz.Spi.MongoDbJobStore
             }
 
             var jobDetail = job.GetJobDetail();
-            StoreTriggerInternal(trigger, jobDetail, true, state, force, force);
+            StoreTriggerInternal(trigger, jobDetail, true, state, force, force).Wait();
 
             jobDetail.JobDataMap.ClearDirtyFlag();
 
@@ -1228,17 +1227,17 @@ namespace Quartz.Spi.MongoDbJobStore
                 cal = _calendarRepository.GetCalendar(trigger.CalendarName).GetCalendar();
             }
 
-            _schedulerSignaler.NotifyTriggerListenersMisfired(operableTrigger);
+            _schedulerSignaler.NotifyTriggerListenersMisfired(operableTrigger).Wait();
             operableTrigger.UpdateAfterMisfire(cal);
 
             if (operableTrigger.GetNextFireTimeUtc().HasValue)
             {
-                StoreTriggerInternal(operableTrigger, null, true, Models.TriggerState.Complete, forceState, recovering);
-                _schedulerSignaler.NotifySchedulerListenersFinalized(operableTrigger);
+                StoreTriggerInternal(operableTrigger, null, true, Models.TriggerState.Complete, forceState, recovering).Wait();
+                _schedulerSignaler.NotifySchedulerListenersFinalized(operableTrigger).Wait();
             }
             else
             {
-                StoreTriggerInternal(operableTrigger, null, true, newStateIfNotComplete, forceState, false);
+                StoreTriggerInternal(operableTrigger, null, true, newStateIfNotComplete, forceState, false).Wait();
             }
         }
 
@@ -1455,7 +1454,7 @@ namespace Quartz.Spi.MongoDbJobStore
                 if (_jobDetailRepository.JobExists(recoveringJobTrigger.JobKey))
                 {
                     recoveringJobTrigger.ComputeFirstFireTimeUtc(null);
-                    StoreTriggerInternal(recoveringJobTrigger, null, false, Models.TriggerState.Waiting, false, true);
+                    StoreTriggerInternal(recoveringJobTrigger, null, false, Models.TriggerState.Waiting, false, true).Wait();
                 }
             }
             Log.Info("Recovery complete");
