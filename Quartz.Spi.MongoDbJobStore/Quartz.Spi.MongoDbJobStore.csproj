@@ -9,7 +9,7 @@
     <PackageReference Include="Quartz" Version="3.0.4" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' != 'netstandard1.3' ">
+  <ItemGroup Condition=" '$(TargetFramework)' != 'netstandard2.0' ">
 	<PackageReference Include="Common.Logging" Version="3.3.1" />
   </ItemGroup>
   

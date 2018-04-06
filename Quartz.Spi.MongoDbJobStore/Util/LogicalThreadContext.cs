@@ -17,6 +17,14 @@
  */
 #endregion
 
+/*
+ * Geniuslink (dba GeoRiot Networks) is using a modified version of this code from Quartz 2.x.
+ * The original code uses .NET Framework remoting CallContext (and HttpContext in the alternative)
+ * to share thread-local data. This code is being used to avoid a rewrite of Quartz.Spi.MongoDBJobStore
+ * which requires the LogicalThreadContext class, which was removed in Quartz 3. Additionally, the
+ * remoting feature is being removed in .NET Core, so we use a work around instead of the CallContext.
+ */
+
 using System.Collections.Concurrent;
 using System.Security;
 
@@ -35,7 +43,6 @@ namespace Quartz.Util
     /// data if HTTP Context is available.
     /// </summary>
     /// <author>Marko Lahma .NET</author>
-    [SecurityCritical]
     public static class LogicalThreadContext
     {
         /// <summary>
