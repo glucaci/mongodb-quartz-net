@@ -15,7 +15,7 @@ services: mongodb
 nuget:
   disable_publish_on_pr: true
 build_script:
-- cmd: build.ps1 -Target AppVeyor
+- ps: build.ps1 -Target AppVeyor
 artifacts:
 - path: artifacts/*.nupkg
   name: NuGet
