@@ -40,7 +40,13 @@ Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-    DotNetCoreTest("./tests/Quartz.Spi.MongoDbJobStore.Tests/Quartz.Spi.MongoDbJobStore.Tests.csproj");
+    var settings = new DotNetCoreTestSettings
+    {
+        Configuration = "Release",
+        Framework = "netcoreapp2.0"
+    };
+
+    DotNetCoreTest("./tests/Quartz.Spi.MongoDbJobStore.Tests/Quartz.Spi.MongoDbJobStore.Tests.csproj", settings);
 });
 
 Task("Pack")
