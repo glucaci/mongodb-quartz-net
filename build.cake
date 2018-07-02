@@ -10,6 +10,17 @@ var configuration = Argument("configuration", "Release");
 // PREPARATION
 //////////////////////////////////////////////////////////////////////
 
+Teardown(context =>
+{
+    // Appveyor is failing to exit the cake script.
+    if (AppVeyor.IsRunningOnAppVeyor)
+    {
+        foreach (var process in Process.GetProcessesByName("dotnet"))
+        {
+            process.Kill();
+        }
+    }
+});
 
 //////////////////////////////////////////////////////////////////////
 // TASKS
