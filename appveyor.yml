@@ -1,6 +1,6 @@
 configuration: Release
 image: Visual Studio 2017
-version: 3.0.0
+version: 3.0.1
 pull_requests:
   do_not_increment_build_number: true
 dotnet_csproj:
@@ -19,3 +19,4 @@ build_script:
 artifacts:
 - path: artifacts/*.nupkg
   name: NuGet
+test: off
