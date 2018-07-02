@@ -11,14 +11,11 @@
     <PackageReference Include="NUnit" Version="3.10.1" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
     <PackageReference Include="System.Runtime.InteropServices.RuntimeInformation" Version="4.3.0" />
+    <PackageReference Include="Common.Logging" Version="3.4.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Quartz.Spi.MongoDbJobStore\Quartz.Spi.MongoDbJobStore.csproj" />
+    <ProjectReference Include="..\..\src\Quartz.Spi.MongoDbJobStore\Quartz.Spi.MongoDbJobStore.csproj" />
   </ItemGroup>
   
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
-	<PackageReference Include="Common.Logging" Version="3.4.1" />
-  </ItemGroup>
-
 </Project>

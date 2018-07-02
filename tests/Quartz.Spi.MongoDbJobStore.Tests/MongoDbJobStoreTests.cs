@@ -461,9 +461,9 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         }
 
         [Test]
-        public void SmokeTest()
+        public async Task SmokeTest()
         {
-            new SmokeTestPerformer().Test(_scheduler, true, true);
+            await new SmokeTestPerformer().Test(_scheduler, true, true);
         }
 
         private async Task CreateJobsAndTriggers()

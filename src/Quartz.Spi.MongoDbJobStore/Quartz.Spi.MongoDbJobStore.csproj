@@ -7,14 +7,7 @@
   <ItemGroup>
     <PackageReference Include="MongoDB.Driver" Version="2.4.2" />
     <PackageReference Include="Quartz" Version="3.0.4" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' != 'netstandard2.0' ">
-	<PackageReference Include="Common.Logging" Version="3.3.1" />
-  </ItemGroup>
-  
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-	<PackageReference Include="Common.Logging" Version="3.4.1" />
+    <PackageReference Include="Common.Logging" Version="3.4.1" />
   </ItemGroup>
 
 </Project>
