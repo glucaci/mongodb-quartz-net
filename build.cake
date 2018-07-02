@@ -18,7 +18,7 @@ var configuration = Argument("configuration", "Release");
 Task("Clean")
     .Does(() =>
 {
-
+    CleanDirectory("./artifacts/");
 });
 
 Task("Restore")
@@ -42,6 +42,27 @@ Task("Test")
     .Does(() =>
 {
     DotNetCoreTest("./tests/Quartz.Spi.MongoDbJobStore.Tests/Quartz.Spi.MongoDbJobStore.Tests.csproj");
+});
+
+Task("Pack")
+    .IsDependentOn("Build")
+    .Does(() => 
+{
+    var settings = new DotNetCorePackSettings
+    {
+        Configuration = configuration,
+        OutputDirectory = "./artifacts/"
+    };
+
+    DotNetCorePack("./src/Quartz.Spi.MongoDbJobStore/Quartz.Spi.MongoDbJobStore.csproj", settings);
+});
+
+Task("AppVeyor")
+    .IsDependentOn("Test")
+    .IsDependentOn("Pack")
+    .Does(() => 
+{
+
 });
 
 //////////////////////////////////////////////////////////////////////

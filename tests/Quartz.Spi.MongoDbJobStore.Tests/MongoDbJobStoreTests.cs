@@ -376,9 +376,9 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 await _scheduler.AddJob(nonDurableJob, false);
                 Assert.Fail("Storage of non-durable job should not have succeeded.");
             }
-            catch (AggregateException e)
+            catch (Exception e)
             {
-                var expectedException = e.InnerException as SchedulerException;
+                var expectedException = e as SchedulerException;
                 Assert.That(expectedException, Is.Not.Null);
                 Assert.That(await _scheduler.CheckExists(new JobKey("j2")), Is.False,
                     "Unexpected existence of job named 'j2'.");
@@ -438,11 +438,11 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             }
             finally
             {
-                void ThreadStart()
+                async void ThreadStart()
                 {
                     try
                     {
-                        _scheduler.Shutdown(true);
+                        await _scheduler.Shutdown(true);
                         shutdown = true;
                     }
                     catch (SchedulerException ex)
