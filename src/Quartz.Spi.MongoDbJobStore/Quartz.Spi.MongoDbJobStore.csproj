@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net452;net462;netstandard2.0</TargetFrameworks>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" Version="2.4.2" />
+    <PackageReference Include="Quartz" Version="3.0.4" />
+    <PackageReference Include="Common.Logging" Version="3.4.1" />
+  </ItemGroup>
+
+</Project>
