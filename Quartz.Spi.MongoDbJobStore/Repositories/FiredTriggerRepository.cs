@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
@@ -13,48 +14,49 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public List<FiredTrigger> GetFiredTriggers(JobKey jobKey)
+        public async Task<List<FiredTrigger>> GetFiredTriggers(JobKey jobKey)
         {
             return
-                Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToList();
+                await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToListAsync();
         }
 
-        public List<FiredTrigger> GetFiredTriggers(string instanceId)
+        public async Task<List<FiredTrigger>> GetFiredTriggers(string instanceId)
         {
             return
-                Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId)
-                    .ToList();
+                await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId)
+                    .ToListAsync();
         }
 
-        public List<FiredTrigger> GetRecoverableFiredTriggers(string instanceId)
+        public async Task<List<FiredTrigger>> GetRecoverableFiredTriggers(string instanceId)
         {
             return
-                Collection.Find(
+                await Collection.Find(
                     trigger =>
                         trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId &&
-                        trigger.RequestsRecovery).ToList();
+                        trigger.RequestsRecovery).ToListAsync();
         }
 
-        public void AddFiredTrigger(FiredTrigger firedTrigger)
+        public async Task AddFiredTrigger(FiredTrigger firedTrigger)
         {
-            Collection.InsertOne(firedTrigger);
+            await Collection.InsertOneAsync(firedTrigger);
         }
 
-        public void DeleteFiredTrigger(string firedInstanceId)
+        public async Task DeleteFiredTrigger(string firedInstanceId)
         {
-            Collection.DeleteOne(trigger => trigger.Id == new FiredTriggerId(firedInstanceId, InstanceName));
+            await Collection.DeleteOneAsync(trigger => trigger.Id == new FiredTriggerId(firedInstanceId, InstanceName));
         }
 
-        public long DeleteFiredTriggersByInstanceId(string instanceId)
+        public async Task<long> DeleteFiredTriggersByInstanceId(string instanceId)
         {
-            return
-                Collection.DeleteMany(
-                    trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId).DeletedCount;
+            var result =
+                await Collection.DeleteManyAsync(
+                    trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId);
+            return result.DeletedCount;
         }
 
-        public void UpdateFiredTrigger(FiredTrigger firedTrigger)
+        public async Task UpdateFiredTrigger(FiredTrigger firedTrigger)
         {
-            Collection.ReplaceOne(trigger => trigger.Id == firedTrigger.Id, firedTrigger);
+            await Collection.ReplaceOneAsync(trigger => trigger.Id == firedTrigger.Id, firedTrigger);
         }
     }
 }

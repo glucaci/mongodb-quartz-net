@@ -72,7 +72,7 @@ namespace Quartz.Spi.MongoDbJobStore
             try
             {
                 Log.Debug("Scanning for misfires...");
-                var result = _jobStore.DoRecoverMisfires();
+                var result = _jobStore.DoRecoverMisfires().Result;
                 _numFails = 0;
                 return result;
             }

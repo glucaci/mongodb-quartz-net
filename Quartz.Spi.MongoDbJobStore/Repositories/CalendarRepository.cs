@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
@@ -14,47 +15,47 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public bool CalendarExists(string calendarName)
+        public async Task<bool> CalendarExists(string calendarName)
         {
             return
-                Collection.Find(
-                    FilterBuilder.Where(calendar => calendar.Id == new CalendarId(calendarName, InstanceName))).Any();
+                await Collection.Find(
+                    FilterBuilder.Where(calendar => calendar.Id == new CalendarId(calendarName, InstanceName))).AnyAsync();
         }
 
-        public Calendar GetCalendar(string calendarName)
+        public async Task<Calendar> GetCalendar(string calendarName)
         {
             return
-                Collection.Find(calendar => calendar.Id == new CalendarId(calendarName, InstanceName)).FirstOrDefault();
+                await Collection.Find(calendar => calendar.Id == new CalendarId(calendarName, InstanceName)).FirstOrDefaultAsync();
         }
 
-        public IEnumerable<string> GetCalendarNames()
+        public async Task<IEnumerable<string>> GetCalendarNames()
         {
-            return Collection.AsQueryable()
-                .Where(calendar => calendar.Id.InstanceName == InstanceName)
-                .Select(calendar => calendar.Id.CalendarName)
-                .Distinct();
+            return await Collection.Distinct(calendar => calendar.Id.CalendarName,
+                calendar => calendar.Id.InstanceName == InstanceName)
+                .ToListAsync();
         } 
 
-        public long GetCount()
+        public async Task<long> GetCount()
         {
-            return Collection.Find(calendar => calendar.Id.InstanceName == InstanceName).Count();
+            return await Collection.Find(calendar => calendar.Id.InstanceName == InstanceName).CountAsync();
         }
 
-        public void AddCalendar(Calendar calendar)
+        public async Task AddCalendar(Calendar calendar)
         {
-            Collection.InsertOne(calendar);
+            await Collection.InsertOneAsync(calendar);
         }
 
-        public long UpdateCalendar(Calendar calendar)
+        public async Task<long> UpdateCalendar(Calendar calendar)
         {
-            return Collection.ReplaceOne(cal => cal.Id == calendar.Id, calendar).MatchedCount;
+            var result = await Collection.ReplaceOneAsync(cal => cal.Id == calendar.Id, calendar);
+            return result.MatchedCount;
         }
 
-        public long DeleteCalendar(string calendarName)
+        public async Task<long> DeleteCalendar(string calendarName)
         {
-            return
-                Collection.DeleteOne(calendar => calendar.Id == new CalendarId(calendarName, InstanceName))
-                    .DeletedCount;
+            var result = 
+                await Collection.DeleteOneAsync(calendar => calendar.Id == new CalendarId(calendarName, InstanceName));
+            return result.DeletedCount;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+﻿using System.Threading.Tasks;
+using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 
@@ -12,23 +13,23 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public void AddScheduler(Scheduler scheduler)
+        public async Task AddScheduler(Scheduler scheduler)
         {
-            Collection.ReplaceOne(sch => sch.Id == scheduler.Id,
+            await Collection.ReplaceOneAsync(sch => sch.Id == scheduler.Id,
                 scheduler, new UpdateOptions()
                 {
                     IsUpsert = true
                 });
         }
 
-        public void DeleteScheduler(string id)
+        public async Task DeleteScheduler(string id)
         {
-            Collection.DeleteOne(sch => sch.Id == new SchedulerId(id, InstanceName));
+            await Collection.DeleteOneAsync(sch => sch.Id == new SchedulerId(id, InstanceName));
         }
 
-        public void UpdateState(string id, SchedulerState state)
+        public async Task UpdateState(string id, SchedulerState state)
         {
-            Collection.UpdateOne(sch => sch.Id == new SchedulerId(id, InstanceName),
+            await Collection.UpdateOneAsync(sch => sch.Id == new SchedulerId(id, InstanceName),
                 UpdateBuilder.Set(sch => sch.State, state));
         }
     }

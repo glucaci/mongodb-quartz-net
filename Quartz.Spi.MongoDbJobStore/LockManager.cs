@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Threading.Tasks;
 using Common.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
@@ -42,12 +43,12 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
-        public IDisposable AcquireLock(LockType lockType, string instanceId)
+        public async Task<IDisposable> AcquireLock(LockType lockType, string instanceId)
         {
             while (true)
             {
                 EnsureObjectNotDisposed();
-                if (_lockRepository.TryAcquireLock(lockType, instanceId))
+                if (await _lockRepository.TryAcquireLock(lockType, instanceId))
                 {
                     var lockInstance = new LockInstance(this, lockType, instanceId);
                     AddLock(lockInstance);
@@ -75,8 +76,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private void LockReleased(LockInstance lockInstance)
         {
-            LockInstance releasedLock;
-            if (!_pendingLocks.TryRemove(lockInstance.LockType, out releasedLock))
+            if (!_pendingLocks.TryRemove(lockInstance.LockType, out _))
             {
                 Log.Warn($"Unable to remove pending lock {lockInstance.LockType} on {lockInstance.InstanceId}");
             }
@@ -109,7 +109,7 @@ namespace Quartz.Spi.MongoDbJobStore
                         $"This lock {LockType} for {InstanceId} has already been disposed");
                 }
 
-                _lockRepository.ReleaseLock(LockType, InstanceId);
+                _lockRepository.ReleaseLock(LockType, InstanceId).GetAwaiter().GetResult();
                 _lockManager.LockReleased(this);
                 _disposed = true;
             }

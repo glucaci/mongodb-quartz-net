@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Common.Logging;
 using MongoDB.Driver;
 
@@ -38,13 +39,14 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         protected IndexKeysDefinitionBuilder<TDocument> IndexBuilder => Builders<TDocument>.IndexKeys;
 
-        public virtual void EnsureIndex()
+        public virtual Task EnsureIndex()
         {
+            return Task.FromResult(0);
         }
 
-        public void DeleteAll()
+        public async Task DeleteAll()
         {
-            Collection.DeleteMany(FilterBuilder.Empty);
+            await Collection.DeleteManyAsync(FilterBuilder.Empty);
         }
 
         /// <summary>

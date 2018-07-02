@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Extensions;
@@ -17,82 +18,80 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public bool TriggerExists(TriggerKey key)
+        public async Task<bool> TriggerExists(TriggerKey key)
         {
-            return Collection.Find(trigger => trigger.Id == new TriggerId(key, InstanceName)).Any();
+            return await Collection.Find(trigger => trigger.Id == new TriggerId(key, InstanceName)).AnyAsync();
         }
 
-        public bool TriggersExists(string calendarName)
+        public async Task<bool> TriggersExists(string calendarName)
         {
             return
-                Collection.Find(
-                    trigger => trigger.Id.InstanceName == InstanceName && trigger.CalendarName == calendarName).Any();
+                await Collection.Find(
+                    trigger => trigger.Id.InstanceName == InstanceName && trigger.CalendarName == calendarName).AnyAsync();
         }
 
-        public Trigger GetTrigger(TriggerKey key)
+        public async Task<Trigger> GetTrigger(TriggerKey key)
         {
-            return Collection.Find(trigger => trigger.Id == new TriggerId(key, InstanceName)).FirstOrDefault();
+            return await Collection.Find(trigger => trigger.Id == new TriggerId(key, InstanceName)).FirstOrDefaultAsync();
         }
 
-        public Models.TriggerState GetTriggerState(TriggerKey triggerKey)
+        public async Task<Models.TriggerState> GetTriggerState(TriggerKey triggerKey)
         {
-            return Collection.Find(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName))
+            return await Collection.Find(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName))
                 .Project(trigger => trigger.State)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
         }
 
-        public JobDataMap GetTriggerJobDataMap(TriggerKey triggerKey)
+        public async Task<JobDataMap> GetTriggerJobDataMap(TriggerKey triggerKey)
         {
-            return Collection.Find(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName))
+            return await Collection.Find(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName))
                 .Project(trigger => trigger.JobDataMap)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
         }
 
-        public List<Trigger> GetTriggers(string calendarName)
+        public async Task<List<Trigger>> GetTriggers(string calendarName)
         {
-            return Collection.Find(FilterBuilder.Where(trigger => trigger.CalendarName == calendarName)).ToList();
+            return await Collection.Find(FilterBuilder.Where(trigger => trigger.CalendarName == calendarName)).ToListAsync();
         }
 
-        public List<Trigger> GetTriggers(JobKey jobKey)
+        public async Task<List<Trigger>> GetTriggers(JobKey jobKey)
         {
             return
-                Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToList();
+                await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToListAsync();
         }
 
-        public List<TriggerKey> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
+        public async Task<List<TriggerKey>> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
         {
-            return Collection.Find(FilterBuilder.And(
+            return await Collection.Find(FilterBuilder.And(
                 FilterBuilder.Eq(trigger => trigger.Id.InstanceName, InstanceName),
                 FilterBuilder.Regex(trigger => trigger.Id.Group, matcher.ToBsonRegularExpression())))
                 .Project(trigger => trigger.Id.GetTriggerKey())
-                .ToList();
+                .ToListAsync();
         }
 
-        public List<TriggerKey> GetTriggerKeys(Models.TriggerState state)
+        public async Task<List<TriggerKey>> GetTriggerKeys(Models.TriggerState state)
         {
-            return Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.State == state)
+            return await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.State == state)
                 .Project(trigger => trigger.Id.GetTriggerKey())
-                .ToList();
+                .ToListAsync();
         } 
 
-        public IEnumerable<string> GetTriggerGroupNames()
+        public async Task<List<string>> GetTriggerGroupNames()
         {
-            return Collection.AsQueryable()
-                .Where(trigger => trigger.Id.InstanceName == InstanceName)
-                .Select(trigger => trigger.Id.Group)
-                .Distinct();
+            return await Collection.Distinct(trigger => trigger.Id.Group,
+                trigger => trigger.Id.InstanceName == InstanceName)
+                .ToListAsync();
         }
 
-        public IEnumerable<string> GetTriggerGroupNames(GroupMatcher<TriggerKey> matcher)
+        public async Task<List<string>> GetTriggerGroupNames(GroupMatcher<TriggerKey> matcher)
         {
             var regex = matcher.ToBsonRegularExpression().ToRegex();
-            return Collection.AsQueryable()
-                .Where(trigger => trigger.Id.InstanceName == InstanceName && regex.IsMatch(trigger.Id.Group))
-                .Select(trigger => trigger.Id.Group)
-                .Distinct();
+            return await Collection.Distinct(trigger => trigger.Id.Group,
+                    trigger => trigger.Id.InstanceName == InstanceName && regex.IsMatch(trigger.Id.Group))
+                .ToListAsync();
         }
 
-        public List<TriggerKey> GetTriggersToAcquire(DateTimeOffset noLaterThan, DateTimeOffset noEarlierThan,
+        public async Task<List<TriggerKey>> GetTriggersToAcquire(DateTimeOffset noLaterThan, DateTimeOffset noEarlierThan,
             int maxCount)
         {
             if (maxCount < 1)
@@ -103,7 +102,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             var noLaterThanDateTime = noLaterThan.UtcDateTime;
             var noEarlierThanDateTime = noEarlierThan.UtcDateTime;
 
-            return Collection.Find(trigger => trigger.Id.InstanceName == InstanceName &&
+            return await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName &&
                                               trigger.State == Models.TriggerState.Waiting &&
                                               trigger.NextFireTime <= noLaterThanDateTime &&
                                               (trigger.MisfireInstruction == -1 ||
@@ -115,104 +114,110 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                     ))
                 .Limit(maxCount)
                 .Project(trigger => trigger.Id.GetTriggerKey())
-                .ToList();
+                .ToListAsync();
         }
 
-        public long GetCount()
+        public async Task<long> GetCount()
         {
-            return Collection.Find(trigger => trigger.Id.InstanceName == InstanceName).Count();
+            return await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName).CountAsync();
         }
 
-        public long GetCount(JobKey jobKey)
+        public async Task<long> GetCount(JobKey jobKey)
         {
             return
-                Collection.Find(
+                await Collection.Find(
                     FilterBuilder.Where(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey))
-                    .Count();
+                    .CountAsync();
         }
 
-        public long GetMisfireCount(DateTime nextFireTime)
+        public async Task<long> GetMisfireCount(DateTime nextFireTime)
         {
             return
-                Collection.Find(
+                await Collection.Find(
                     trigger =>
                         trigger.Id.InstanceName == InstanceName &&
                         trigger.MisfireInstruction != MisfireInstruction.IgnoreMisfirePolicy &&
                         trigger.NextFireTime < nextFireTime && trigger.State == Models.TriggerState.Waiting)
-                    .Count();
+                    .CountAsync();
         }
 
-        public void AddTrigger(Trigger trigger)
+        public async Task AddTrigger(Trigger trigger)
         {
-            Collection.InsertOne(trigger);
+            await Collection.InsertOneAsync(trigger);
         }
 
-        public void UpdateTrigger(Trigger trigger)
+        public async Task UpdateTrigger(Trigger trigger)
         {
-            Collection.ReplaceOne(t => t.Id == trigger.Id, trigger);
+            await Collection.ReplaceOneAsync(t => t.Id == trigger.Id, trigger);
         }
 
-        public long UpdateTriggerState(TriggerKey triggerKey, Models.TriggerState state)
+        public async Task<long> UpdateTriggerState(TriggerKey triggerKey, Models.TriggerState state)
         {
-            return Collection.UpdateOne(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName),
-                UpdateBuilder.Set(trigger => trigger.State, state)).ModifiedCount;
+            var result = await Collection.UpdateOneAsync(trigger => trigger.Id == new TriggerId(triggerKey, InstanceName),
+                UpdateBuilder.Set(trigger => trigger.State, state));
+            return result.ModifiedCount;
         }
 
-        public long UpdateTriggerState(TriggerKey triggerKey, Models.TriggerState newState, Models.TriggerState oldState)
+        public async Task<long> UpdateTriggerState(TriggerKey triggerKey, Models.TriggerState newState, Models.TriggerState oldState)
         {
-            return Collection.UpdateOne(
+            var result = await Collection.UpdateOneAsync(
                 trigger => trigger.Id == new TriggerId(triggerKey, InstanceName) && trigger.State == oldState,
-                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
+                UpdateBuilder.Set(trigger => trigger.State, newState));
+            return result.ModifiedCount;
         }
 
-        public long UpdateTriggersStates(GroupMatcher<TriggerKey> matcher, Models.TriggerState newState,
+        public async Task<long> UpdateTriggersStates(GroupMatcher<TriggerKey> matcher, Models.TriggerState newState,
             params Models.TriggerState[] oldStates)
         {
-            return Collection.UpdateMany(FilterBuilder.And(
+            var result = await Collection.UpdateManyAsync(FilterBuilder.And(
                 FilterBuilder.Eq(trigger => trigger.Id.InstanceName, InstanceName),
                 FilterBuilder.Regex(trigger => trigger.Id.Group, matcher.ToBsonRegularExpression()),
                 FilterBuilder.In(trigger => trigger.State, oldStates)),
-                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
+                UpdateBuilder.Set(trigger => trigger.State, newState));
+            return result.ModifiedCount;
         }
 
-        public long UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState,
+        public async Task<long> UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState,
             params Models.TriggerState[] oldStates)
         {
-            return Collection.UpdateMany(
+            var result = await Collection.UpdateManyAsync(
                 trigger =>
                     trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey &&
                     oldStates.Contains(trigger.State),
-                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
+                UpdateBuilder.Set(trigger => trigger.State, newState));
+            return result.ModifiedCount;
         }
 
-        public long UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState)
+        public async Task<long> UpdateTriggersStates(JobKey jobKey, Models.TriggerState newState)
         {
-            return Collection.UpdateMany(
+            var result = await Collection.UpdateManyAsync(
                 trigger =>
                     trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey,
-                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
+                UpdateBuilder.Set(trigger => trigger.State, newState));
+            return result.ModifiedCount;
         }
 
-        public long UpdateTriggersStates(Models.TriggerState newState, params Models.TriggerState[] oldStates)
+        public async Task<long> UpdateTriggersStates(Models.TriggerState newState, params Models.TriggerState[] oldStates)
         {
-            return Collection.UpdateMany(
+            var result = await Collection.UpdateManyAsync(
                 trigger =>
                     trigger.Id.InstanceName == InstanceName && oldStates.Contains(trigger.State),
-                UpdateBuilder.Set(trigger => trigger.State, newState)).ModifiedCount;
+                UpdateBuilder.Set(trigger => trigger.State, newState));
+            return result.ModifiedCount;
         }
 
-        public long DeleteTrigger(TriggerKey key)
+        public async Task<long> DeleteTrigger(TriggerKey key)
         {
-            return
-                Collection.DeleteOne(FilterBuilder.Where(trigger => trigger.Id == new TriggerId(key, InstanceName)))
-                    .DeletedCount;
+            var result = 
+                await Collection.DeleteOneAsync(FilterBuilder.Where(trigger => trigger.Id == new TriggerId(key, InstanceName)));
+            return result.DeletedCount;
         }
 
-        public long DeleteTriggers(JobKey jobKey)
+        public async Task<long> DeleteTriggers(JobKey jobKey)
         {
-            return Collection.DeleteMany(
-                FilterBuilder.Where(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey))
-                .DeletedCount;
+            var result = await Collection.DeleteManyAsync(
+                FilterBuilder.Where(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey));
+            return result.DeletedCount;
         }
 
         /// <summary>

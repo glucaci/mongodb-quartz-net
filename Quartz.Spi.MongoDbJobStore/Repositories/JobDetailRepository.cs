@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Extensions;
@@ -16,37 +17,36 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public JobDetail GetJob(JobKey jobKey)
+        public async Task<JobDetail> GetJob(JobKey jobKey)
         {
-            return Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).FirstOrDefault();
+            return await Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).FirstOrDefaultAsync();
         }
 
-        public List<JobKey> GetJobsKeys(GroupMatcher<JobKey> matcher)
+        public async Task<List<JobKey>> GetJobsKeys(GroupMatcher<JobKey> matcher)
         {
             return
-                Collection.Find(FilterBuilder.And(
+                await Collection.Find(FilterBuilder.And(
                     FilterBuilder.Eq(detail => detail.Id.InstanceName, InstanceName),
                     FilterBuilder.Regex(detail => detail.Id.Group, matcher.ToBsonRegularExpression())))
                     .Project(detail => detail.Id.GetJobKey())
-                    .ToList();
+                    .ToListAsync();
         }
 
-        public IEnumerable<string> GetJobGroupNames()
+        public async Task<IEnumerable<string>> GetJobGroupNames()
         {
-            return Collection.AsQueryable()
-                .Where(detail => detail.Id.InstanceName == InstanceName)
-                .Select(detail => detail.Id.Group)
-                .Distinct();
+            return await Collection
+                .Distinct(detail => detail.Id.Group, detail => detail.Id.InstanceName == InstanceName)
+                .ToListAsync();
         } 
 
-        public void AddJob(JobDetail jobDetail)
+        public async Task AddJob(JobDetail jobDetail)
         {
-            Collection.InsertOne(jobDetail);
+            await Collection.InsertOneAsync(jobDetail);
         }
 
-        public long UpdateJob(JobDetail jobDetail, bool upsert)
+        public async Task<long> UpdateJob(JobDetail jobDetail, bool upsert)
         {
-            var result = Collection.ReplaceOne(detail => detail.Id == jobDetail.Id,
+            var result = await Collection.ReplaceOneAsync(detail => detail.Id == jobDetail.Id,
                 jobDetail,
                 new UpdateOptions
                 {
@@ -55,26 +55,26 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             return result.ModifiedCount;
         }
 
-        public void UpdateJobData(JobKey jobKey, JobDataMap jobDataMap)
+        public async Task UpdateJobData(JobKey jobKey, JobDataMap jobDataMap)
         {
-            Collection.UpdateOne(detail => detail.Id == new JobDetailId(jobKey, InstanceName),
+            await Collection.UpdateOneAsync(detail => detail.Id == new JobDetailId(jobKey, InstanceName),
                 UpdateBuilder.Set(detail => detail.JobDataMap, jobDataMap));
         }
 
-        public long DeleteJob(JobKey key)
+        public async Task<long> DeleteJob(JobKey key)
         {
-            var result = Collection.DeleteOne(FilterBuilder.Where(job => job.Id == new JobDetailId(key, InstanceName)));
+            var result = await Collection.DeleteOneAsync(FilterBuilder.Where(job => job.Id == new JobDetailId(key, InstanceName)));
             return result.DeletedCount;
         }
 
-        public bool JobExists(JobKey jobKey)
+        public async Task<bool> JobExists(JobKey jobKey)
         {
-            return Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).Any();
+            return await Collection.Find(detail => detail.Id == new JobDetailId(jobKey, InstanceName)).AnyAsync();
         }
 
-        public long GetCount()
+        public async Task<long> GetCount()
         {
-            return Collection.Find(detail => detail.Id.InstanceName == InstanceName).Count();
+            return await Collection.Find(detail => detail.Id.InstanceName == InstanceName).CountAsync();
         }
     }
 }

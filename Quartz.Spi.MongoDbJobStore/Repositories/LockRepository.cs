@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Common.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
@@ -16,13 +17,13 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public bool TryAcquireLock(LockType lockType, string instanceId)
+        public async Task<bool> TryAcquireLock(LockType lockType, string instanceId)
         {
             var lockId = new LockId(lockType, InstanceName);
             Log.Trace($"Trying to acquire lock {lockId} on {instanceId}");
             try
             {
-                Collection.InsertOne(new Lock
+                await Collection.InsertOneAsync(new Lock
                 {
                     Id = lockId,
                     InstanceId = instanceId,
@@ -38,12 +39,12 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             }
         }
 
-        public bool ReleaseLock(LockType lockType, string instanceId)
+        public async Task<bool> ReleaseLock(LockType lockType, string instanceId)
         {
             var lockId = new LockId(lockType, InstanceName);
             Log.Trace($"Releasing lock {lockId} on {instanceId}");
             var result =
-                Collection.DeleteOne(
+                await Collection.DeleteOneAsync(
                     FilterBuilder.Where(@lock => @lock.Id == lockId && @lock.InstanceId == instanceId));
             if (result.DeletedCount > 0)
             {
@@ -57,9 +58,9 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             }
         }
 
-        public override void EnsureIndex()
+        public override async Task EnsureIndex()
         {
-            Collection.Indexes.CreateOne(IndexBuilder.Ascending(@lock => @lock.AquiredAt),
+            await Collection.Indexes.CreateOneAsync(IndexBuilder.Ascending(@lock => @lock.AquiredAt),
                 new CreateIndexOptions() {ExpireAfter = TimeSpan.FromSeconds(30)});
         }
     }

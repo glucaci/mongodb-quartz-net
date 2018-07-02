@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Extensions;
@@ -15,35 +16,35 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
         }
 
-        public List<string> GetPausedTriggerGroups()
+        public async Task<List<string>> GetPausedTriggerGroups()
         {
-            return Collection.Find(group => group.Id.InstanceName == InstanceName)
+            return await Collection.Find(group => group.Id.InstanceName == InstanceName)
                 .Project(group => group.Id.Group)
-                .ToList();
+                .ToListAsync();
         }
 
-        public bool IsTriggerGroupPaused(string group)
+        public async Task<bool> IsTriggerGroupPaused(string group)
         {
-            return Collection.Find(g => g.Id == new PausedTriggerGroupId(group, InstanceName)).Any();
+            return await Collection.Find(g => g.Id == new PausedTriggerGroupId(group, InstanceName)).AnyAsync();
         }
 
-        public void AddPausedTriggerGroup(string group)
+        public async Task AddPausedTriggerGroup(string group)
         {
-            Collection.InsertOne(new PausedTriggerGroup()
+            await Collection.InsertOneAsync(new PausedTriggerGroup()
             {
                 Id = new PausedTriggerGroupId(group, InstanceName)
             });
         }
 
-        public void DeletePausedTriggerGroup(GroupMatcher<TriggerKey> matcher)
+        public async Task DeletePausedTriggerGroup(GroupMatcher<TriggerKey> matcher)
         {
             var regex = matcher.ToBsonRegularExpression().ToRegex();
-            Collection.DeleteMany(group => group.Id.InstanceName == InstanceName && regex.IsMatch(group.Id.Group));
+            await Collection.DeleteManyAsync(group => group.Id.InstanceName == InstanceName && regex.IsMatch(group.Id.Group));
         }
 
-        public void DeletePausedTriggerGroup(string groupName)
+        public async Task DeletePausedTriggerGroup(string groupName)
         {
-            Collection.DeleteOne(group => group.Id == new PausedTriggerGroupId(groupName, InstanceName));
+            await Collection.DeleteOneAsync(group => group.Id == new PausedTriggerGroupId(groupName, InstanceName));
         }
     }
 }
