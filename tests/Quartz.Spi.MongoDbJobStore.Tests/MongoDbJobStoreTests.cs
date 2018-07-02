@@ -3,38 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NUnit.Framework;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Tests.Jobs;
 using Quartz.Tests.Integration.Impl;
+using FluentAssertions;
+using Xunit;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Quartz.Spi.MongoDbJobStore.Tests
 {
-    [TestFixture]
-    public class MongoDbJobStoreTests : BaseStoreTests
+    public class MongoDbJobStoreTests : BaseStoreTests, IDisposable
     {
         private IScheduler _scheduler;
 
-        [SetUp]
-        public async Task Setup()
+        public MongoDbJobStoreTests()
         {
-            _scheduler = CreateScheduler();
-            await _scheduler.Clear();
+            _scheduler = CreateScheduler().Result;
+            _scheduler.Clear().Wait();
         }
 
-        [TearDown]
-        public async Task Teardown()
+        public void Dispose()
         {
-            await _scheduler.Shutdown();
+            _scheduler.Shutdown().Wait();
         }
 
-        [Test]
-        public void TestStoreInitialization()
-        {
-            Assert.DoesNotThrow(() => { CreateScheduler(); });
-        }
-
-        [Test]
+        [Fact]
         public async Task AddJobTest()
         {
             var job = JobBuilder.Create<SimpleJob>()
@@ -42,14 +36,14 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 .StoreDurably()
                 .Build();
 
-            Assert.That(await _scheduler.CheckExists(new JobKey("j1")), Is.False);
+            (await _scheduler.CheckExists(new JobKey("j1"))).Should().BeFalse();
 
             await _scheduler.AddJob(job, false);
 
-            Assert.That(await _scheduler.CheckExists(new JobKey("j1")), Is.True);
+            (await _scheduler.CheckExists(new JobKey("j1"))).Should().BeTrue();
         }
 
-        [Test]
+        [Fact]
         public async Task RetrieveJobTest()
         {
             var job = JobBuilder.Create<SimpleJob>()
@@ -60,10 +54,10 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
             job = await _scheduler.GetJobDetail(new JobKey("j1"));
 
-            Assert.That(job, Is.Not.Null);
+            job.Should().NotBeNull();
         }
 
-        [Test]
+        [Fact]
         public async Task AddTriggerTest()
         {
             var job = JobBuilder.Create<SimpleJob>()
@@ -80,22 +74,22 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                     .WithIntervalInSeconds(5))
                 .Build();
 
-            Assert.That(await _scheduler.CheckExists(new TriggerKey("t1")), Is.False);
+            (await _scheduler.CheckExists(new TriggerKey("t1"))).Should().BeFalse();
 
             await _scheduler.ScheduleJob(job, trigger);
 
-            Assert.That(await _scheduler.CheckExists(new TriggerKey("t1")), Is.True);
+            (await _scheduler.CheckExists(new TriggerKey("t1"))).Should().BeTrue();
 
             job = await _scheduler.GetJobDetail(new JobKey("j1"));
 
-            Assert.That(job, Is.Not.Null);
+            job.Should().NotBeNull();
 
             trigger = await _scheduler.GetTrigger(new TriggerKey("t1"));
 
-            Assert.That(trigger, Is.Not.Null);
+            trigger.Should().NotBeNull();
         }
 
-        [Test]
+        [Fact]
         public async Task GroupsTest()
         {
             await CreateJobsAndTriggers();
@@ -103,40 +97,40 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             var jobGroups = await _scheduler.GetJobGroupNames();
             var triggerGroups = await _scheduler.GetTriggerGroupNames();
 
-            Assert.That(jobGroups.Count, Is.EqualTo(2), "Job group list size expected to be = 2 ");
-            Assert.That(triggerGroups.Count, Is.EqualTo(2), "Trigger group list size expected to be = 2 ");
+            jobGroups.Count.Should().Be(2, "Job group list size expected to be = 2 ");
+            triggerGroups.Count.Should().Be(2, "Trigger group list size expected to be = 2 ");
 
             var jobKeys = await _scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(JobKey.DefaultGroup));
             var triggerKeys = await _scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals(TriggerKey.DefaultGroup));
 
-            Assert.That(jobKeys.Count, Is.EqualTo(1), "Number of jobs expected in default group was 1 ");
-            Assert.That(triggerKeys.Count, Is.EqualTo(1), "Number of triggers expected in default group was 1 ");
+            jobKeys.Count.Should().Be(1, "Number of jobs expected in default group was 1 ");
+            triggerKeys.Count.Should().Be(1, "Number of triggers expected in default group was 1 ");
 
             jobKeys = await _scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("g1"));
             triggerKeys = await _scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("g1"));
 
-            Assert.That(jobKeys.Count, Is.EqualTo(2), "Number of jobs expected in 'g1' group was 2 ");
-            Assert.That(triggerKeys.Count, Is.EqualTo(2), "Number of triggers expected in 'g1' group was 2 ");
+            jobKeys.Count.Should().Be(2, "Number of jobs expected in 'g1' group was 2 ");
+            triggerKeys.Count.Should().Be(2, "Number of triggers expected in 'g1' group was 2 ");
         }
 
-        [Test]
+        [Fact]
         public async Task TriggerStateTest()
         {
             await CreateJobsAndTriggers();
 
             var s = await _scheduler.GetTriggerState(new TriggerKey("t2", "g1"));
-            Assert.That(s.Equals(TriggerState.Normal), "State of trigger t2 expected to be NORMAL ");
+            s.Equals(TriggerState.Normal).Should().BeTrue("State of trigger t2 expected to be NORMAL ");
 
             await _scheduler.PauseTrigger(new TriggerKey("t2", "g1"));
             s = await _scheduler.GetTriggerState(new TriggerKey("t2", "g1"));
-            Assert.That(s.Equals(TriggerState.Paused), "State of trigger t2 expected to be PAUSED ");
+            s.Equals(TriggerState.Paused).Should().BeTrue("State of trigger t2 expected to be PAUSED ");
 
             await _scheduler.ResumeTrigger(new TriggerKey("t2", "g1"));
             s = await _scheduler.GetTriggerState(new TriggerKey("t2", "g1"));
-            Assert.That(s.Equals(TriggerState.Normal), "State of trigger t2 expected to be NORMAL ");
+            s.Equals(TriggerState.Normal).Should().BeTrue("State of trigger t2 expected to be NORMAL ");
 
             var pausedGroups = await _scheduler.GetPausedTriggerGroups();
-            Assert.That(pausedGroups, Is.Empty, "Size of paused trigger groups list expected to be 0 ");
+            (pausedGroups).Should().BeEmpty("Size of paused trigger groups list expected to be 0 ");
 
             await _scheduler.PauseTriggers(GroupMatcher<TriggerKey>.GroupEquals("g1"));
 
@@ -155,53 +149,51 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             await _scheduler.ScheduleJob(job, trigger);
 
             pausedGroups = await _scheduler.GetPausedTriggerGroups();
-            Assert.That(pausedGroups.Count, Is.EqualTo(1), "Size of paused trigger groups list expected to be 1 ");
+            pausedGroups.Count.Should().Be(1, "Size of paused trigger groups list expected to be 1 ");
 
             s = await _scheduler.GetTriggerState(new TriggerKey("t2", "g1"));
-            Assert.That(s.Equals(TriggerState.Paused), "State of trigger t2 expected to be PAUSED ");
+            s.Equals(TriggerState.Paused).Should().BeTrue("State of trigger t2 expected to be PAUSED ");
 
             s = await _scheduler.GetTriggerState(new TriggerKey("t4", "g1"));
-            Assert.That(s.Equals(TriggerState.Paused), "State of trigger t4 expected to be PAUSED ");
+            s.Equals(TriggerState.Paused).Should().BeTrue("State of trigger t4 expected to be PAUSED ");
 
             await _scheduler.ResumeTriggers(GroupMatcher<TriggerKey>.GroupEquals("g1"));
             s = await _scheduler.GetTriggerState(new TriggerKey("t2", "g1"));
-            Assert.That(s.Equals(TriggerState.Normal), "State of trigger t2 expected to be NORMAL ");
+            s.Equals(TriggerState.Normal).Should().BeTrue("State of trigger t2 expected to be NORMAL ");
             s = await _scheduler.GetTriggerState(new TriggerKey("t4", "g1"));
-            Assert.That(s.Equals(TriggerState.Normal), "State of trigger t4 expected to be NORMAL ");
+            s.Equals(TriggerState.Normal).Should().BeTrue("State of trigger t4 expected to be NORMAL ");
             pausedGroups = await _scheduler.GetPausedTriggerGroups();
-            Assert.That(pausedGroups, Is.Empty, "Size of paused trigger groups list expected to be 0 ");
+            (pausedGroups).Should().BeEmpty("Size of paused trigger groups list expected to be 0 ");
         }
 
-        [Test]
+        [Fact]
         public async Task SchedulingTest()
         {
             await CreateJobsAndTriggers();
 
-            Assert.That(await _scheduler.UnscheduleJob(new TriggerKey("foasldfksajdflk")), Is.False,
-                "Scheduler should have returned 'false' from attempt to unschedule non-existing trigger. ");
+            (await _scheduler.UnscheduleJob(new TriggerKey("foasldfksajdflk"))).Should().BeFalse("Scheduler should have returned 'false' from attempt to unschedule non-existing trigger. ");
 
-            Assert.That(await _scheduler.UnscheduleJob(new TriggerKey("t3", "g1")),
-                "Scheduler should have returned 'true' from attempt to unschedule existing trigger. ");
+            (await _scheduler.UnscheduleJob(new TriggerKey("t3", "g1"))).Should()
+                .BeTrue("Scheduler should have returned 'true' from attempt to unschedule existing trigger. ");
 
             var jobKeys = await _scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("g1"));
             var triggerKeys = await _scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("g1"));
 
-            Assert.That(jobKeys.Count, Is.EqualTo(1), "Number of jobs expected in 'g1' group was 1 ");
+            jobKeys.Count.Should().Be(1, "Number of jobs expected in 'g1' group was 1 ");
             // job should have been deleted also, because it is non-durable
-            Assert.That(triggerKeys.Count, Is.EqualTo(1), "Number of triggers expected in 'g1' group was 1 ");
+            triggerKeys.Count.Should().Be(1, "Number of triggers expected in 'g1' group was 1 ");
 
-            Assert.That(await _scheduler.UnscheduleJob(new TriggerKey("t1")),
-                "Scheduler should have returned 'true' from attempt to unschedule existing trigger. ");
+            (await _scheduler.UnscheduleJob(new TriggerKey("t1"))).Should().BeTrue("Scheduler should have returned 'true' from attempt to unschedule existing trigger. ");
 
             jobKeys = await _scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(JobKey.DefaultGroup));
             triggerKeys = await _scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals(TriggerKey.DefaultGroup));
 
-            Assert.That(jobKeys.Count, Is.EqualTo(1), "Number of jobs expected in default group was 1 ");
+            jobKeys.Count.Should().Be(1, "Number of jobs expected in default group was 1 ");
             // job should have been left in place, because it is non-durable
-            Assert.That(triggerKeys, Is.Empty, "Number of triggers expected in default group was 0 ");
+            (triggerKeys).Should().BeEmpty("Number of triggers expected in default group was 0 ");
         }
 
-        [Test]
+        [Fact]
         public async Task SimpleReschedulingTest()
         {
             var job = JobBuilder.Create<SimpleJob>().WithIdentity("job1", "group1").Build();
@@ -214,7 +206,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             await _scheduler.ScheduleJob(job, trigger1);
 
             job = await _scheduler.GetJobDetail(job.Key);
-            Assert.That(job, Is.Not.Null);
+            job.Should().NotBeNull();
 
             var trigger2 = TriggerBuilder.Create()
                 .ForJob(job)
@@ -223,10 +215,10 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 .Build();
             await _scheduler.RescheduleJob(trigger1.Key, trigger2);
             job = await _scheduler.GetJobDetail(job.Key);
-            Assert.That(job, Is.Not.Null);
+            job.Should().NotBeNull();
         }
 
-        [Test]
+        [Fact]
         public async Task TestAbilityToFireImmediatelyWhenStartedBefore()
         {
             var jobExecTimestamps = new List<DateTime>();
@@ -256,11 +248,10 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
             var fTime = jobExecTimestamps[0];
 
-            Assert.That(fTime - sTime < TimeSpan.FromMilliseconds(7000),
-                "Immediate trigger did not fire within a reasonable amount of time.");
+            (fTime - sTime < TimeSpan.FromMilliseconds(7000)).Should().BeTrue("Immediate trigger did not fire within a reasonable amount of time.");
         }
 
-        [Test]
+        [Fact]
         public async Task TestAbilityToFireImmediatelyWhenStartedBeforeWithTriggerJob()
         {
             var jobExecTimestamps = new List<DateTime>();
@@ -290,12 +281,11 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
             var fTime = jobExecTimestamps[0];
 
-            Assert.That(fTime - sTime < TimeSpan.FromMilliseconds(7000),
-                "Immediate trigger did not fire within a reasonable amount of time.");
+            (fTime - sTime < TimeSpan.FromMilliseconds(7000)).Should().BeTrue("Immediate trigger did not fire within a reasonable amount of time.");
             // This is dangerously subjective!  but what else to do?
         }
 
-        [Test]
+        [Fact]
         public async Task TestAbilityToFireImmediatelyWhenStartedAfter()
         {
             var jobExecTimestamps = new List<DateTime>();
@@ -319,12 +309,11 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
             var fTime = jobExecTimestamps[0];
 
-            Assert.That(fTime - sTime < TimeSpan.FromMilliseconds(7000),
-                "Immediate trigger did not fire within a reasonable amount of time.");
+            (fTime - sTime < TimeSpan.FromMilliseconds(7000)).Should().BeTrue("Immediate trigger did not fire within a reasonable amount of time.");
             // This is dangerously subjective!  but what else to do?
         }
 
-        [Test]
+        [Fact]
         public async Task TestScheduleMultipleTriggersForAJob()
         {
             var job = JobBuilder.Create<SimpleJob>().WithIdentity("job1", "group1").Build();
@@ -344,14 +333,14 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             await _scheduler.ScheduleJob(job, triggersForJob, true);
 
             var triggersOfJob = await _scheduler.GetTriggersOfJob(job.Key);
-            Assert.That(triggersOfJob.Count, Is.EqualTo(2));
-            Assert.That(triggersOfJob.Contains(trigger1));
-            Assert.That(triggersOfJob.Contains(trigger2));
+            triggersOfJob.Count.Should().Be(2);
+            (triggersOfJob.Contains(trigger1)).Should().BeTrue();
+            (triggersOfJob.Contains(trigger2)).Should().BeTrue();
 
             await _scheduler.Shutdown(false);
         }
 
-        [Test]
+        [Fact]
         public async Task TestDurableStorageFunctions()
         {
             // test basic storage functions of scheduler...
@@ -361,11 +350,11 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 .StoreDurably()
                 .Build();
 
-            Assert.That(await _scheduler.CheckExists(new JobKey("j1")), Is.False, "Unexpected existence of job named 'j1'.");
+            (await _scheduler.CheckExists(new JobKey("j1"))).Should().BeFalse("Unexpected existence of job named 'j1'.");
 
             await _scheduler.AddJob(job, false);
 
-            Assert.That(await _scheduler.CheckExists(new JobKey("j1")), "Unexpected non-existence of job named 'j1'.");
+            (await _scheduler.CheckExists(new JobKey("j1"))).Should().BeTrue("Unexpected non-existence of job named 'j1'.");
 
             var nonDurableJob = JobBuilder.Create<SimpleJob>()
                 .WithIdentity("j2")
@@ -374,22 +363,21 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             try
             {
                 await _scheduler.AddJob(nonDurableJob, false);
-                Assert.Fail("Storage of non-durable job should not have succeeded.");
+                throw new Exception("Storage of non-durable job should not have succeeded.");
             }
             catch (Exception e)
             {
                 var expectedException = e as SchedulerException;
-                Assert.That(expectedException, Is.Not.Null);
-                Assert.That(await _scheduler.CheckExists(new JobKey("j2")), Is.False,
-                    "Unexpected existence of job named 'j2'.");
+                expectedException.Should().NotBeNull();
+                (await _scheduler.CheckExists(new JobKey("j2"))).Should().BeFalse("Unexpected existence of job named 'j2'.");
             }
 
             await _scheduler.AddJob(nonDurableJob, false, true);
 
-            Assert.That(await _scheduler.CheckExists(new JobKey("j2")), "Unexpected non-existence of job named 'j2'.");
+            (await _scheduler.CheckExists(new JobKey("j2"))).Should().BeTrue("Unexpected non-existence of job named 'j2'.");
         }
 
-        [Test]
+        [Fact]
         public async Task TestShutdownWithoutWaitIsUnclean()
         {
             var jobExecTimestamps = new List<DateTime>();
@@ -416,7 +404,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             barrier.SignalAndWait(TestTimeout);
         }
 
-        [Test]
+        [Fact]
         public async Task TestShutdownWithWaitIsClean()
         {
             var shutdown = false;
@@ -454,13 +442,13 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 var t = new Thread(ThreadStart);
                 t.Start();
                 Thread.Sleep(1000);
-                Assert.That(shutdown, Is.False);
+                shutdown.Should().BeFalse();
                 barrier.SignalAndWait(TestTimeout);
                 t.Join();
             }
         }
 
-        [Test]
+        [Fact]
         public async Task SmokeTest()
         {
             await new SmokeTestPerformer().Test(_scheduler, true, true);

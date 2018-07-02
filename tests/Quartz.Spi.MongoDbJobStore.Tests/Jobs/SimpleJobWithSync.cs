@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NUnit.Framework;
 
 namespace Quartz.Spi.MongoDbJobStore.Tests.Jobs
 {
@@ -22,7 +21,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests.Jobs
             catch (Exception e)
             {
                 Console.Write(e);
-                Assert.Fail("Await on barrier was interrupted: " + e);
+                throw e;
             }
 
             return Task.FromResult(0);

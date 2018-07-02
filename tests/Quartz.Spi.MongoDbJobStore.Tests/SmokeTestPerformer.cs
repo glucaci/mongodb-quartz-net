@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using NUnit.Framework;
 using Quartz.Impl;
 using Quartz.Impl.Calendar;
 using Quartz.Impl.Matchers;
@@ -10,6 +9,8 @@ using Quartz.Spi;
 using Quartz.Util;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using FluentAssertions;
+using Xunit;
 
 namespace Quartz.Tests.Integration.Impl
 {
@@ -31,7 +32,7 @@ namespace Quartz.Tests.Integration.Impl
 
                     // QRTZNET-86
                     var t = await scheduler.GetTrigger(new TriggerKey("NonExistingTrigger", "NonExistingGroup"));
-                    Assert.IsNull(t);
+                    (t).Should().BeNull();
 
                     var cal = new AnnualCalendar();
                     await scheduler.AddCalendar("annualCalendar", cal, false, true);
@@ -57,7 +58,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.AddCalendar("cronCalendar", cronCalendar, true, true);
                     await scheduler.AddCalendar("holidayCalendar", holidayCalendar, true, true);
 
-                    Assert.IsNotNull(await scheduler.GetCalendar("annualCalendar"));
+                    (await scheduler.GetCalendar("annualCalendar")).Should().NotBeNull();
 
                     var lonelyJob = new JobDetailImpl("lonelyJob", "lonelyGroup", typeof (SimpleRecoveryJob));
                     lonelyJob.Durable = true;
@@ -84,8 +85,8 @@ namespace Quartz.Tests.Integration.Impl
 
                     // check that trigger was stored
                     var persisted = await scheduler.GetTrigger(new TriggerKey("trig_" + count, schedId));
-                    Assert.IsNotNull(persisted);
-                    Assert.IsTrue(persisted is SimpleTriggerImpl);
+                    (persisted).Should().NotBeNull();
+                    (persisted is SimpleTriggerImpl).Should().BeTrue();
 
                     count++;
                     job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
@@ -164,13 +165,13 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(nt2);
 
                     var triggerFromDb = (IDailyTimeIntervalTrigger) await scheduler.GetTrigger(nt2.Key);
-                    Assert.That(triggerFromDb.StartTimeOfDay.Hour, Is.EqualTo(1));
-                    Assert.That(triggerFromDb.StartTimeOfDay.Minute, Is.EqualTo(2));
-                    Assert.That(triggerFromDb.StartTimeOfDay.Second, Is.EqualTo(3));
+                    triggerFromDb.StartTimeOfDay.Hour.Should().Be(1);
+                    triggerFromDb.StartTimeOfDay.Minute.Should().Be(2);
+                    triggerFromDb.StartTimeOfDay.Second.Should().Be(3);
 
-                    Assert.That(triggerFromDb.EndTimeOfDay.Hour, Is.EqualTo(2));
-                    Assert.That(triggerFromDb.EndTimeOfDay.Minute, Is.EqualTo(3));
-                    Assert.That(triggerFromDb.EndTimeOfDay.Second, Is.EqualTo(4));
+                    triggerFromDb.EndTimeOfDay.Hour.Should().Be(2);
+                    triggerFromDb.EndTimeOfDay.Minute.Should().Be(3);
+                    triggerFromDb.EndTimeOfDay.Second.Should().Be(4);
 
                     job.RequestsRecovery = true;
                     var intervalTrigger = new CalendarIntervalTriggerImpl(
@@ -196,8 +197,8 @@ namespace Quartz.Tests.Integration.Impl
 
                     await scheduler.ScheduleJobs(info, true);
 
-                    Assert.IsTrue(await scheduler.CheckExists(detail.Key));
-                    Assert.IsTrue(await scheduler.CheckExists(simple.Key));
+                    (await scheduler.CheckExists(detail.Key)).Should().BeTrue();
+                    (await scheduler.CheckExists(simple.Key)).Should().BeTrue();
 
                     // QRTZNET-243
                     await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("a").DeepClone());
@@ -233,15 +234,15 @@ namespace Quartz.Tests.Integration.Impl
 
                     await scheduler.PauseTriggers(GroupMatcher<TriggerKey>.GroupEquals(schedId));
 
-                    Assert.AreEqual(1, (await scheduler.GetPausedTriggerGroups()).Count);
+                    (await scheduler.GetPausedTriggerGroups()).Count.Should().Be(1);
 
                     Thread.Sleep(TimeSpan.FromSeconds(3));
                     await scheduler.ResumeTriggers(GroupMatcher<TriggerKey>.GroupEquals(schedId));
 
-                    Assert.IsNotNull(await scheduler.GetTrigger(new TriggerKey("trig_2", schedId)));
-                    Assert.IsNotNull(await scheduler.GetJobDetail(new JobKey("job_1", schedId)));
-                    Assert.IsNotNull(await scheduler.GetMetaData());
-                    Assert.IsNotNull(await scheduler.GetCalendar("weeklyCalendar"));
+                    (await scheduler.GetTrigger(new TriggerKey("trig_2", schedId))).Should().NotBeNull();
+                    (await scheduler.GetJobDetail(new JobKey("job_1", schedId))).Should().NotBeNull();
+                    (await scheduler.GetMetaData()).Should().NotBeNull();
+                    (await scheduler.GetCalendar("weeklyCalendar")).Should().NotBeNull();
 
                     var genericjobKey = new JobKey("genericJob", "genericGroup");
                     var genericJob = JobBuilder.Create<GenericJobType<string>>()
@@ -252,19 +253,18 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.AddJob(genericJob, false);
 
                     genericJob = await scheduler.GetJobDetail(genericjobKey);
-                    Assert.That(genericJob, Is.Not.Null);
+                    genericJob.Should().NotBeNull();
                     await scheduler.TriggerJob(genericjobKey);
 
                     Thread.Sleep(TimeSpan.FromSeconds(20));
 
-                    Assert.That(GenericJobType<string>.TriggeredCount, Is.EqualTo(1));
+                    GenericJobType<string>.TriggeredCount.Should().Be(1);
                     await scheduler.Standby();
 
-                    CollectionAssert.IsNotEmpty(await scheduler.GetCalendarNames());
-                    CollectionAssert.IsNotEmpty(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(schedId)));
-
-                    CollectionAssert.IsNotEmpty(await scheduler.GetTriggersOfJob(new JobKey("job_2", schedId)));
-                    Assert.IsNotNull(await scheduler.GetJobDetail(new JobKey("job_2", schedId)));
+                    (await scheduler.GetCalendarNames()).Should().NotBeEmpty();
+                    (await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(schedId))).Should().NotBeEmpty();
+                    (await scheduler.GetTriggersOfJob(new JobKey("job_2", schedId))).Should().NotBeEmpty();
+                    (await scheduler.GetJobDetail(new JobKey("job_2", schedId))).Should().NotBeNull();
 
                     await scheduler.DeleteCalendar("cronCalendar");
                     await scheduler.DeleteCalendar("holidayCalendar");
@@ -310,58 +310,58 @@ namespace Quartz.Tests.Integration.Impl
             await scheduler.ScheduleJob(trigger);
 
             var jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.AnyGroup());
-            Assert.That(jkeys.Count, Is.EqualTo(3), "Wrong number of jobs found by anything matcher");
+            jkeys.Count.Should().Be(3, "Wrong number of jobs found by anything matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("xxxyyyzzz"));
-            Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by equals matcher");
+            jkeys.Count.Should().Be(2, "Wrong number of jobs found by equals matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("aaabbbccc"));
-            Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by equals matcher");
+            jkeys.Count.Should().Be(1, "Wrong number of jobs found by equals matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("aa"));
-            Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by starts with matcher");
+            jkeys.Count.Should().Be(1, "Wrong number of jobs found by starts with matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupStartsWith("xx"));
-            Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by starts with matcher");
+            jkeys.Count.Should().Be(2, "Wrong number of jobs found by starts with matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("cc"));
-            Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by ends with matcher");
+            jkeys.Count.Should().Be(1, "Wrong number of jobs found by ends with matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEndsWith("zzz"));
-            Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by ends with matcher");
+            jkeys.Count.Should().Be(2, "Wrong number of jobs found by ends with matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("bc"));
-            Assert.That(jkeys.Count, Is.EqualTo(1), "Wrong number of jobs found by contains with matcher");
+            jkeys.Count.Should().Be(1, "Wrong number of jobs found by contains with matcher");
 
             jkeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupContains("yz"));
-            Assert.That(jkeys.Count, Is.EqualTo(2), "Wrong number of jobs found by contains with matcher");
+            jkeys.Count.Should().Be(2, "Wrong number of jobs found by contains with matcher");
 
             var tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.AnyGroup());
-            Assert.That(tkeys.Count, Is.EqualTo(3), "Wrong number of triggers found by anything matcher");
+            tkeys.Count.Should().Be(3, "Wrong number of triggers found by anything matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("xxxyyyzzz"));
-            Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by equals matcher");
+            tkeys.Count.Should().Be(2, "Wrong number of triggers found by equals matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals("aaabbbccc"));
-            Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by equals matcher");
+            tkeys.Count.Should().Be(1, "Wrong number of triggers found by equals matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("aa"));
-            Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by starts with matcher");
+            tkeys.Count.Should().Be(1, "Wrong number of triggers found by starts with matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupStartsWith("xx"));
-            Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by starts with matcher");
+            tkeys.Count.Should().Be(2, "Wrong number of triggers found by starts with matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("cc"));
-            Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by ends with matcher");
+            tkeys.Count.Should().Be(1, "Wrong number of triggers found by ends with matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEndsWith("zzz"));
-            Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by ends with matcher");
+            tkeys.Count.Should().Be(2, "Wrong number of triggers found by ends with matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("bc"));
-            Assert.That(tkeys.Count, Is.EqualTo(1), "Wrong number of triggers found by contains with matcher");
+            tkeys.Count.Should().Be(1, "Wrong number of triggers found by contains with matcher");
 
             tkeys = await scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupContains("yz"));
-            Assert.That(tkeys.Count, Is.EqualTo(2), "Wrong number of triggers found by contains with matcher");
+            tkeys.Count.Should().Be(2, "Wrong number of triggers found by contains with matcher");
         }
     }
 

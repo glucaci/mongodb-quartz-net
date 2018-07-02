@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Specialized;
+using System.Threading.Tasks;
 using Quartz.Impl;
 
 namespace Quartz.Spi.MongoDbJobStore.Tests
@@ -10,7 +11,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         public const string DateStamps = "DATE_STAMPS";
         public static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(125);
 
-        protected IScheduler CreateScheduler(string instanceName = "QUARTZ_TEST")
+        protected async Task<IScheduler> CreateScheduler(string instanceName = "QUARTZ_TEST")
         {
             var properties = new NameValueCollection
             {
@@ -24,7 +25,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             };
 
             var scheduler = new StdSchedulerFactory(properties);
-            return scheduler.GetScheduler().Result;
+            return await scheduler.GetScheduler();
         }
     }
 }
