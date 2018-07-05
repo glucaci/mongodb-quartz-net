@@ -1270,7 +1270,7 @@ namespace Quartz.Spi.MongoDbJobStore
             await _schedulerSignaler.NotifyTriggerListenersMisfired(operableTrigger);
             operableTrigger.UpdateAfterMisfire(cal);
 
-            if (operableTrigger.GetNextFireTimeUtc().HasValue)
+            if (!operableTrigger.GetNextFireTimeUtc().HasValue)
             {
                 await StoreTriggerInternal(operableTrigger, null, true, Models.TriggerState.Complete, forceState,
                     recovering);
@@ -1278,8 +1278,7 @@ namespace Quartz.Spi.MongoDbJobStore
             }
             else
             {
-                await StoreTriggerInternal(operableTrigger, null, true, newStateIfNotComplete, forceState, false)
-                    ;
+                await StoreTriggerInternal(operableTrigger, null, true, newStateIfNotComplete, forceState, false);
             }
         }
 
