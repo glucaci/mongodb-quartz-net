@@ -6,8 +6,8 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="2.4.2" />
-    <PackageReference Include="Quartz" Version="3.0.4" />
+    <PackageReference Include="MongoDB.Driver" Version="2.7.2" />
+    <PackageReference Include="Quartz" Version="3.0.7" />
     <PackageReference Include="Common.Logging" Version="3.4.1" />
   </ItemGroup>
 
