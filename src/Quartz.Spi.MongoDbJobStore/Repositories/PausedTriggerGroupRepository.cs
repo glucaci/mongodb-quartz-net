@@ -20,12 +20,12 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
             return await Collection.Find(group => group.Id.InstanceName == InstanceName)
                 .Project(group => group.Id.Group)
-                .ToListAsync();
+                .ToListAsync().ConfigureAwait(false);
         }
 
         public async Task<bool> IsTriggerGroupPaused(string group)
         {
-            return await Collection.Find(g => g.Id == new PausedTriggerGroupId(group, InstanceName)).AnyAsync();
+            return await Collection.Find(g => g.Id == new PausedTriggerGroupId(group, InstanceName)).AnyAsync().ConfigureAwait(false);
         }
 
         public async Task AddPausedTriggerGroup(string group)
@@ -33,18 +33,18 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             await Collection.InsertOneAsync(new PausedTriggerGroup()
             {
                 Id = new PausedTriggerGroupId(group, InstanceName)
-            });
+            }).ConfigureAwait(false);
         }
 
         public async Task DeletePausedTriggerGroup(GroupMatcher<TriggerKey> matcher)
         {
             var regex = matcher.ToBsonRegularExpression().ToRegex();
-            await Collection.DeleteManyAsync(group => group.Id.InstanceName == InstanceName && regex.IsMatch(group.Id.Group));
+            await Collection.DeleteManyAsync(group => group.Id.InstanceName == InstanceName && regex.IsMatch(group.Id.Group)).ConfigureAwait(false);
         }
 
         public async Task DeletePausedTriggerGroup(string groupName)
         {
-            await Collection.DeleteOneAsync(group => group.Id == new PausedTriggerGroupId(groupName, InstanceName));
+            await Collection.DeleteOneAsync(group => group.Id == new PausedTriggerGroupId(groupName, InstanceName)).ConfigureAwait(false);
         }
     }
 }

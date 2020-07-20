@@ -46,7 +46,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public async Task DeleteAll()
         {
-            await Collection.DeleteManyAsync(FilterBuilder.Empty);
+            await Collection.DeleteManyAsync(FilterBuilder.Empty).ConfigureAwait(false);
         }
 
         /// <summary>

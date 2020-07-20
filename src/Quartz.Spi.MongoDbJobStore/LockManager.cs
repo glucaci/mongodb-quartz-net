@@ -10,7 +10,7 @@ using Quartz.Spi.MongoDbJobStore.Repositories;
 namespace Quartz.Spi.MongoDbJobStore
 {
     /// <summary>
-    /// Implements a simple distributed lock on top of MongoDB. It is not a reentrant lock so you can't 
+    /// Implements a simple distributed lock on top of MongoDB. It is not a reentrant lock so you can't
     /// acquire the lock more than once in the same thread of execution.
     /// </summary>
     internal class LockManager : IDisposable
@@ -48,7 +48,7 @@ namespace Quartz.Spi.MongoDbJobStore
             while (true)
             {
                 EnsureObjectNotDisposed();
-                if (await _lockRepository.TryAcquireLock(lockType, instanceId))
+                if (await _lockRepository.TryAcquireLock(lockType, instanceId).ConfigureAwait(false))
                 {
                     var lockInstance = new LockInstance(this, lockType, instanceId);
                     AddLock(lockInstance);
@@ -109,7 +109,7 @@ namespace Quartz.Spi.MongoDbJobStore
                         $"This lock {LockType} for {InstanceId} has already been disposed");
                 }
 
-                _lockRepository.ReleaseLock(LockType, InstanceId).GetAwaiter().GetResult();
+                _lockRepository.ReleaseLock(LockType, InstanceId).ConfigureAwait(false).GetAwaiter().GetResult();
                 _lockManager.LockReleased(this);
                 _disposed = true;
             }
