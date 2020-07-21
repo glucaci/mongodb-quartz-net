@@ -19,18 +19,18 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 scheduler, new UpdateOptions()
                 {
                     IsUpsert = true
-                });
+                }).ConfigureAwait(false);
         }
 
         public async Task DeleteScheduler(string id)
         {
-            await Collection.DeleteOneAsync(sch => sch.Id == new SchedulerId(id, InstanceName));
+            await Collection.DeleteOneAsync(sch => sch.Id == new SchedulerId(id, InstanceName)).ConfigureAwait(false);
         }
 
         public async Task UpdateState(string id, SchedulerState state)
         {
             await Collection.UpdateOneAsync(sch => sch.Id == new SchedulerId(id, InstanceName),
-                UpdateBuilder.Set(sch => sch.State, state));
+                UpdateBuilder.Set(sch => sch.State, state)).ConfigureAwait(false);
         }
     }
 }
