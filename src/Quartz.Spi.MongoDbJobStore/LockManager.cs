@@ -24,6 +24,8 @@ namespace Quartz.Spi.MongoDbJobStore
         private readonly ConcurrentDictionary<LockType, LockInstance> _pendingLocks =
             new ConcurrentDictionary<LockType, LockInstance>();
 
+        private readonly SemaphoreSlim _pendingLocksSemaphore = new SemaphoreSlim(1);
+
         private bool _disposed;
 
         public LockManager(IMongoDatabase database, string instanceName, string collectionPrefix)
@@ -48,13 +50,40 @@ namespace Quartz.Spi.MongoDbJobStore
             while (true)
             {
                 EnsureObjectNotDisposed();
-                if (await _lockRepository.TryAcquireLock(lockType, instanceId).ConfigureAwait(false))
+
+                await _pendingLocksSemaphore.WaitAsync();
+                try
                 {
-                    var lockInstance = new LockInstance(this, lockType, instanceId);
-                    AddLock(lockInstance);
-                    return lockInstance;
+                    if (await _lockRepository.TryAcquireLock(lockType, instanceId).ConfigureAwait(false))
+                    {
+                        var lockInstance = new LockInstance(this, lockType, instanceId);
+                        AddLock(lockInstance);
+
+                        return lockInstance;
+                    }
                 }
-                Thread.Sleep(SleepThreshold);
+                finally
+                {
+                    _pendingLocksSemaphore.Release();
+                }
+
+                await Task.Delay(SleepThreshold);
+            }
+        }
+        
+        private async Task ReleaseLock(LockInstance lockInstance)
+        {
+            await _pendingLocksSemaphore.WaitAsync();
+            try
+            {
+
+                _lockRepository.ReleaseLock(lockInstance.LockType, lockInstance.InstanceId).ConfigureAwait(false).GetAwaiter().GetResult();
+                
+                LockReleased(lockInstance);
+            }
+            finally
+            {
+                _pendingLocksSemaphore.Release();
             }
         }
 
@@ -85,7 +114,6 @@ namespace Quartz.Spi.MongoDbJobStore
         private class LockInstance : IDisposable
         {
             private readonly LockManager _lockManager;
-            private readonly LockRepository _lockRepository;
 
             private bool _disposed;
 
@@ -94,7 +122,6 @@ namespace Quartz.Spi.MongoDbJobStore
                 _lockManager = lockManager;
                 LockType = lockType;
                 InstanceId = instanceId;
-                _lockRepository = lockManager._lockRepository;
             }
 
             public string InstanceId { get; }
@@ -109,8 +136,8 @@ namespace Quartz.Spi.MongoDbJobStore
                         $"This lock {LockType} for {InstanceId} has already been disposed");
                 }
 
-                _lockRepository.ReleaseLock(LockType, InstanceId).ConfigureAwait(false).GetAwaiter().GetResult();
-                _lockManager.LockReleased(this);
+                _lockManager.ReleaseLock(this).GetAwaiter().GetResult();
+
                 _disposed = true;
             }
         }
