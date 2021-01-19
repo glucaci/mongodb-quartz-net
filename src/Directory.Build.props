@@ -1,0 +1,48 @@
+<Project>
+
+  <PropertyGroup>
+    <RootNamespace>Quartz.Extensions.MongoDB</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>Full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>Quartz.Extensions.MongoDB</Product>
+    <Authors>Gabriel Lucaci</Authors>
+    <Company>Gabriel Lucaci</Company>
+    <Copyright>Copyright © 2021 Gabriel Lucaci</Copyright>
+    <PackageLicenseUrl>https://github.com/glucaci/mongodb-quartz-net/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/glucaci/mongodb-quartz-net</PackageProjectUrl>
+    <PackageReleaseNotes>Release notes: https://github.com/glucaci/mongodb-quartz-net/releases/$(Version)</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/glucaci/mongodb-quartz-net.git</RepositoryUrl>
+    <PackageTags>Quartz.NET Store JobStore MongoDB</PackageTags>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <RepositoryType>GitHub</RepositoryType>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IncludeSymbols>true</IncludeSymbols>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+
+</Project>
