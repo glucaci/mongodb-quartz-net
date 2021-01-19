@@ -2,7 +2,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
-using Quartz.Simpl;
 
 namespace Quartz.Spi.MongoDbJobStore.Serializers
 {

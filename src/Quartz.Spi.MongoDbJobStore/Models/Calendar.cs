@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using MongoDB.Bson.Serialization.Attributes;
-using Quartz.Simpl;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
 
 namespace Quartz.Spi.MongoDbJobStore.Models
