@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
-    <Version>1.0.0</Version>
+    <AssemblyName>Quartz.Extensions.MongoDB</AssemblyName>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFrameworks>net462;net5.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
+    <RootNamespace>Quartz.Extensions.MongoDB.Tests</RootNamespace>
+    <AssemblyName>Quartz.Extensions.MongoDB.Tests</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

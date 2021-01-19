@@ -1,6 +1,7 @@
 <Project>
 
   <PropertyGroup>
+    <RootNamespace>Quartz.Extensions.MongoDB</RootNamespace>
     <LangVersion>9.0</LangVersion>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
@@ -18,7 +19,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Product>Quartz.Spi.MongoDbJobStore</Product>
+    <Product>Quartz.Extensions.MongoDB</Product>
     <Authors>Gabriel Lucaci</Authors>
     <Company>Gabriel Lucaci</Company>
     <Copyright>Copyright © 2021 Gabriel Lucaci</Copyright>
