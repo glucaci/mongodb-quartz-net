@@ -3,7 +3,7 @@ MongoDB Job Store for Quartz.NET
 Thanks to @chrisdrobison for handing over this project.
 
 ## Package name
-**New: Quartz.Extensions.MongoDB**
+**New: Quartz.Store.MongoDB**
 
 Old: Quartz.Spi.MongoDbJobStore
 
@@ -26,5 +26,5 @@ return scheduler.GetScheduler();
 ## Nuget
 
 ```
-Install-Package Quartz.Extensions.MongoDB
+Install-Package Quartz.Store.MongoDB
 ```
