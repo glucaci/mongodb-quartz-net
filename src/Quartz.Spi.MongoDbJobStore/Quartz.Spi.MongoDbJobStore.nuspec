@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
     <metadata>
-        <id>Quartz.Spi.MongoDbJobStore</id>
+        <id>Quartz.Extensions.MongoDB</id>
         <version>$version$</version>
         <title>MongoDB Job Store for Quartz.NET</title>
         <authors>Gabriel Lucaci</authors>
