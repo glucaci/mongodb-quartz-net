@@ -7,17 +7,19 @@ using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Tests.Jobs;
 using Quartz.Tests.Integration.Impl;
 using FluentAssertions;
+using Squadron;
 using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Quartz.Spi.MongoDbJobStore.Tests
 {
-    public class MongoDbJobStoreTests : BaseStoreTests, IDisposable
+    public class MongoDbJobStoreTests : BaseStoreTests, IDisposable, IClassFixture<MongoResource>
     {
         private IScheduler _scheduler;
 
-        public MongoDbJobStoreTests()
+        public MongoDbJobStoreTests(MongoResource monoResource)
+            : base(monoResource)
         {
             _scheduler = CreateScheduler().Result;
             _scheduler.Clear().Wait();
