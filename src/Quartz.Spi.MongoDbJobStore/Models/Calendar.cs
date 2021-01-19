@@ -6,7 +6,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 {
     internal class Calendar
     {
-        private static readonly IObjectSerializer ObjectSerializer = new DefaultObjectSerializer();
+        private static readonly IObjectSerializer ObjectSerializer = new JsonObjectSerializer();
 
         public Calendar()
         {

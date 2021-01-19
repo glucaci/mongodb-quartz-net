@@ -8,7 +8,7 @@ namespace Quartz.Spi.MongoDbJobStore.Serializers
 {
     internal class JobDataMapSerializer : SerializerBase<JobDataMap>
     {
-        private readonly DefaultObjectSerializer _objectSerializer = new DefaultObjectSerializer();
+        private readonly IObjectSerializer _objectSerializer = new JsonObjectSerializer();
 
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, JobDataMap value)
         {
