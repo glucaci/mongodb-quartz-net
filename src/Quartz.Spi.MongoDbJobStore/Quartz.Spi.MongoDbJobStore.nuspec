@@ -4,12 +4,12 @@
         <id>Quartz.Spi.MongoDbJobStore</id>
         <version>$version$</version>
         <title>MongoDB Job Store for Quartz.NET</title>
-        <authors>Chris Robison</authors>
-        <owners>chrisdrobison</owners>
-        <licenseUrl>https://github.com/chrisdrobison/mongodb-quartz-net/blob/master/LICENSE.txt</licenseUrl>
-        <projectUrl>https://github.com/chrisdrobison/mongodb-quartz-net</projectUrl>
+        <authors>Gabriel Lucaci</authors>
+        <owners>glucaci</owners>
+        <licenseUrl>https://github.com/glucaci/mongodb-quartz-net/blob/master/LICENSE.txt</licenseUrl>
+        <projectUrl>https://github.com/glucaci/mongodb-quartz-net</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
-        <description>A MongoDB job store for Quartz.NET. This library targets the new MongoDB C# 2.0 driver.</description>
+        <description>A MongoDB job store for Quartz.NET.</description>
         <dependencies>
             <group targetFramework=".NETFramework4.5.2">
                 <dependency id="MongoDB.Driver" version="2.4.2" />
