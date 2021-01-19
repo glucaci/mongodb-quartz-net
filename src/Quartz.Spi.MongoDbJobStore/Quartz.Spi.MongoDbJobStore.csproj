@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>net452;net462;netstandard2.0</TargetFrameworks>
-    <AssemblyName>Quartz.Store.MongoDB</AssemblyName>
+    <AssemblyName>Quartz.Spi.MongoDbJobStore</AssemblyName>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
