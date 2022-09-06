@@ -29,3 +29,5 @@ README.md
 **/coveragereport/*.css
 **/coveragereport/*.html
 **/coveragereport/*.htm
+
+**/coverage*.cobertura.xml
