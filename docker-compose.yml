@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile
       context: .
     volumes:
-      - tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport:/mysrc/tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport
+      - ./tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport:/mysrc/tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport
     depends_on:
       - mongo
     
