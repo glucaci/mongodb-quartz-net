@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+  myapp:
+    container_name: myapp_mongo_quartz
+    build: 
+      dockerfile: Dockerfile
+      context: .
+    volumes:
+      - ./tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport:/mysrc/tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport
+    depends_on:
+      - mongo
+    

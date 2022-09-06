@@ -264,3 +264,10 @@ paket-files/
 __pycache__/
 *.pyc
 *.DotSettings
+
+**/coveragereport/*.xml
+**/coveragereport/*.svg
+**/coveragereport/*.js
+**/coveragereport/*.css
+**/coveragereport/*.html
+**/coveragereport/*.htm

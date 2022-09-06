@@ -23,7 +23,12 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 config.UsePersistentStore(opt =>
                 {
                     opt.UseJsonSerializer();
-                    QuartzMongoHelper.SetStoreProperties(opt.Properties, instanceName);
+                    string conn = null;
+                    if (Environment.GetEnvironmentVariable("USE_DOCKER_ENV")!=null)
+                    {
+                        conn = "mongodb://mongo/quartz";
+                    }
+                    QuartzMongoHelper.SetStoreProperties(opt.Properties, instanceName,conn);
                 });
             });
             var provider = coll.BuildServiceProvider();

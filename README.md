@@ -23,3 +23,8 @@ return scheduler.GetScheduler();
 ```
 Install-Package Quartz.Spi.MongoDbJobStore
 ```
+
+> mirror from 
+https://github.com/Cricle/mongodb-quartz-net (with modify)
+and 
+https://github.com/glucaci/mongodb-quartz-net
