@@ -17,10 +17,16 @@ jobs:
       - name: Run test
         shell: bash
         run: |
+          docker-compose -p mongo_quartz down 
+          docker-compose -p mongo_quartz rm
           docker-compose -p mongo_quartz build
           docker-compose -p mongo_quartz up -d
           docker wait $(docker ps -aqf "name=myapp_mongo_quartz")
-
+      - name: Clean up docker
+        run: |
+          docker-compose -p mongo_quartz down 
+          docker-compose -p mongo_quartz rm
+          
       - name: Upload coverage report artifact
         uses: actions/upload-artifact@v2.2.3
         with:
