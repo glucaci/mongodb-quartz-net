@@ -10,23 +10,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Docker Compose Action
-        uses: isbang/compose-action@v1.2.0
-      
+      - uses: actions/checkout@v2      
       - name: Run test
         shell: bash
         run: |
           docker-compose -p mongo_quartz down 
-          docker-compose -p mongo_quartz rm
+          docker-compose -p mongo_quartz rm -f
           docker-compose -p mongo_quartz build
           docker-compose -p mongo_quartz up -d
           docker wait $(docker ps -aqf "name=myapp_mongo_quartz")
       - name: Clean up docker
         run: |
           docker-compose -p mongo_quartz down 
-          docker-compose -p mongo_quartz rm
-          
+          docker-compose -p mongo_quartz rm -f
+
       - name: Upload coverage report artifact
         uses: actions/upload-artifact@v2.2.3
         with:
