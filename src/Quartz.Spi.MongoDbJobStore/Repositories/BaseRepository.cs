@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Common.Logging;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace Quartz.Spi.MongoDbJobStore.Repositories
 {
     internal abstract class BaseRepository<TDocument>
     {
-        private static readonly ILog Log = LogManager.GetLogger(typeof (BaseRepository<>));
         private static readonly HashSet<string> InitializedCollections = new HashSet<string>();
 
-        protected BaseRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
+        protected BaseRepository(IMongoDatabase database, string instanceName,
+            ILogger logger,
+            string? collectionPrefix = null)
         {
+            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             InstanceName = instanceName;
             var collectionName = GetCollectionName();
             if (!string.IsNullOrEmpty(collectionPrefix))
@@ -26,6 +28,8 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
 
         protected string InstanceName { get; }
+
+        protected ILogger Logger { get; }
 
         protected IMongoCollection<TDocument> Collection { get; }
 
@@ -75,7 +79,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 {
                     return;
                 }
-                Log.Trace($"Building index for {collectionName}");
+                Logger.LogTrace($"Building index for {collectionName}");
                 EnsureIndex();
                 InitializedCollections.Add(collectionName);
             }

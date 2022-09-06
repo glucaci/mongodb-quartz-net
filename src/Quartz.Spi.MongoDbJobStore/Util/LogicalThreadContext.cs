@@ -31,7 +31,7 @@ using System.Security;
 // Workaround for getting off remoting removed in NET Core: http://www.cazzulino.com/callcontext-netstandard-netcore.html
 #if NET452
 using System.Runtime.Remoting.Messaging;
-#elif NET462 || NETSTANDARD2_0
+#elif NET461 || NETSTANDARD2_0
 using System.Threading;
 #endif
 
@@ -51,15 +51,15 @@ namespace Quartz.Util
         /// <param name="name">The name of the item.</param>
         /// <returns>The object in the call context associated with the specified name or null if no object has been stored previously</returns>
 
-#if NET462 || NETSTANDARD2_0
+#if NET461 || NETSTANDARD2_0
         static ConcurrentDictionary<string, AsyncLocal<object>> state = new ConcurrentDictionary<string, AsyncLocal<object>>();
 #endif
 
-        public static T GetData<T>(string name)
+        public static T? GetData<T>(string name)
         {
 #if NET452
             return (T)CallContext.GetData(name);
-#elif NET462 || NETSTANDARD2_0
+#elif NET461 || NETSTANDARD2_0
             return state.TryGetValue(name, out AsyncLocal<object> data) ? (T)data.Value : default(T);
 #endif
         }
@@ -73,7 +73,7 @@ namespace Quartz.Util
         {
 #if NET452
             CallContext.SetData(name, value);
-#elif NET462 || NETSTANDARD2_0
+#elif NET461 || NETSTANDARD2_0
             state.GetOrAdd(name, _ => new AsyncLocal<object>()).Value = value;
 #endif
         }
@@ -86,7 +86,7 @@ namespace Quartz.Util
         {
 #if NET452
             CallContext.FreeNamedDataSlot(name);
-#elif NET462 || NETSTANDARD2_0
+#elif NET461 || NETSTANDARD2_0
             state.TryRemove(name, out AsyncLocal<object> discard);
 #endif
         }

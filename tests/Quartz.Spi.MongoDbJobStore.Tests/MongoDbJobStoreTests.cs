@@ -19,7 +19,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
         public MongoDbJobStoreTests()
         {
-            _scheduler = CreateScheduler().Result;
+            _scheduler = CreateScheduler().GetAwaiter().GetResult();
             _scheduler.Clear().Wait();
         }
 

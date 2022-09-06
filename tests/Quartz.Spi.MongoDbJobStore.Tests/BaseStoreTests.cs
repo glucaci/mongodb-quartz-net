@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Quartz.Impl;
 
 namespace Quartz.Spi.MongoDbJobStore.Tests
@@ -13,19 +15,21 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
         protected async Task<IScheduler> CreateScheduler(string instanceName = "QUARTZ_TEST")
         {
-            var properties = new NameValueCollection
+            var coll = new ServiceCollection();
+            coll.AddLogging();
+            coll.AddQuartz(config =>
             {
-                ["quartz.serializer.type"] = "binary",
-                [StdSchedulerFactory.PropertySchedulerInstanceName] = instanceName,
-                [StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}",
-                [StdSchedulerFactory.PropertyJobStoreType] = typeof(MongoDbJobStore).AssemblyQualifiedName,
-                [$"{StdSchedulerFactory.PropertyJobStorePrefix}.{StdSchedulerFactory.PropertyDataSourceConnectionString}"]
-                    = "mongodb://localhost/quartz",
-                [$"{StdSchedulerFactory.PropertyJobStorePrefix}.collectionPrefix"] = "prefix"
-            };
-
-            var scheduler = new StdSchedulerFactory(properties);
-            return await scheduler.GetScheduler();
+                config.UseMicrosoftDependencyInjectionJobFactory();
+                config.UsePersistentStore(opt =>
+                {
+                    opt.UseJsonSerializer();
+                    QuartzMongoHelper.SetStoreProperties(opt.Properties, instanceName);
+                });
+            });
+            var provider = coll.BuildServiceProvider();
+            MongoDbJobStore.LoggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var factory = provider.GetRequiredService<ISchedulerFactory>();
+            return await factory.GetScheduler();
         }
     }
 }

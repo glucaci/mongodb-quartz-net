@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
@@ -9,21 +10,24 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
     [CollectionName("firedTriggers")]
     internal class FiredTriggerRepository : BaseRepository<FiredTrigger>
     {
-        public FiredTriggerRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
-            : base(database, instanceName, collectionPrefix)
+        public FiredTriggerRepository(IMongoDatabase database,
+            string instanceName,
+            ILogger<FiredTriggerRepository> logger,
+            string? collectionPrefix = null)
+            : base(database, instanceName, logger, collectionPrefix)
         {
         }
 
         public async Task<List<FiredTrigger>> GetFiredTriggers(JobKey jobKey)
         {
             return
-                await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.JobKey == jobKey).ToListAsync().ConfigureAwait(false);
+                await Collection.Find(trigger => trigger.Id!.InstanceName == InstanceName && trigger.JobKey == jobKey).ToListAsync().ConfigureAwait(false);
         }
 
         public async Task<List<FiredTrigger>> GetFiredTriggers(string instanceId)
         {
             return
-                await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId)
+                await Collection.Find(trigger => trigger.Id!.InstanceName == InstanceName && trigger.InstanceId == instanceId)
                     .ToListAsync().ConfigureAwait(false);
         }
 
@@ -32,7 +36,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             return
                 await Collection.Find(
                     trigger =>
-                        trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId &&
+                        trigger.Id!.InstanceName == InstanceName && trigger.InstanceId == instanceId &&
                         trigger.RequestsRecovery).ToListAsync().ConfigureAwait(false);
         }
 
@@ -50,7 +54,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
             var result =
                 await Collection.DeleteManyAsync(
-                    trigger => trigger.Id.InstanceName == InstanceName && trigger.InstanceId == instanceId).ConfigureAwait(false);
+                    trigger => trigger.Id!.InstanceName == InstanceName && trigger.InstanceId == instanceId).ConfigureAwait(false);
             return result.DeletedCount;
         }
 

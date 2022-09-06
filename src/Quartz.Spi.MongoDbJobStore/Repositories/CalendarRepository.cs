@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
@@ -10,8 +11,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
     [CollectionName("calendars")]
     internal class CalendarRepository : BaseRepository<Calendar>
     {
-        public CalendarRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
-            : base(database, instanceName, collectionPrefix)
+        public CalendarRepository(IMongoDatabase database,
+            string instanceName,
+            ILogger<CalendarRepository> logger,
+            string? collectionPrefix = null)
+            : base(database, instanceName, logger, collectionPrefix)
         {
         }
 
@@ -37,7 +41,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public async Task<long> GetCount()
         {
-            return await Collection.Find(calendar => calendar.Id.InstanceName == InstanceName).CountAsync().ConfigureAwait(false);
+            return await Collection.Find(calendar => calendar.Id.InstanceName == InstanceName).CountDocumentsAsync().ConfigureAwait(false);
         }
 
         public async Task AddCalendar(Calendar calendar)

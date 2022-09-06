@@ -13,7 +13,7 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         {
         }
 
-        public FiredTrigger(string firedInstanceId, Trigger trigger, JobDetail jobDetail)
+        public FiredTrigger(string firedInstanceId, Trigger trigger, JobDetail? jobDetail)
         {
             Id = new FiredTriggerId(firedInstanceId, trigger.Id.InstanceName);
             TriggerKey = trigger.Id.GetTriggerKey();
@@ -31,13 +31,13 @@ namespace Quartz.Spi.MongoDbJobStore.Models
         }
 
         [BsonId]
-        public FiredTriggerId Id { get; set; }
+        public FiredTriggerId? Id { get; set; }
 
-        public TriggerKey TriggerKey { get; set; }
+        public TriggerKey? TriggerKey { get; set; }
 
-        public JobKey JobKey { get; set; }
+        public JobKey? JobKey { get; set; }
 
-        public string InstanceId { get; set; }
+        public string? InstanceId { get; set; }
 
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime Fired { get; set; }
@@ -56,6 +56,14 @@ namespace Quartz.Spi.MongoDbJobStore.Models
 
         public IOperableTrigger GetRecoveryTrigger(JobDataMap jobDataMap)
         {
+            if (JobKey == null)
+            {
+                throw new InvalidOperationException($"JobKey is null");
+            }
+            if (TriggerKey == null)
+            {
+                throw new InvalidOperationException($"TriggerKey is null");
+            }
             var firedTime = new DateTimeOffset(Fired);
             var scheduledTime = Scheduled.HasValue ? new DateTimeOffset(Scheduled.Value) : DateTimeOffset.MinValue;
             var recoveryTrigger = new SimpleTriggerImpl($"recover_{InstanceId}_{Guid.NewGuid()}",

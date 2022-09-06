@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Extensions;
@@ -13,8 +14,10 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
     [CollectionName("triggers")]
     internal class TriggerRepository : BaseRepository<Trigger>
     {
-        public TriggerRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
-            : base(database, instanceName, collectionPrefix)
+        public TriggerRepository(IMongoDatabase database, string instanceName, 
+            ILogger<TriggerRepository> logger,
+            string? collectionPrefix = null)
+            : base(database, instanceName,logger, collectionPrefix)
         {
         }
 

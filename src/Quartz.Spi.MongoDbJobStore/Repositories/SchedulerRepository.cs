@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Models.Id;
@@ -8,15 +9,18 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
     [CollectionName("schedulers")]
     internal class SchedulerRepository : BaseRepository<Scheduler>
     {
-        public SchedulerRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
-            : base(database, instanceName, collectionPrefix)
+        public SchedulerRepository(IMongoDatabase database, 
+            string instanceName,
+            ILogger<SchedulerRepository> logger,
+            string? collectionPrefix = null)
+            : base(database, instanceName, logger, collectionPrefix)
         {
         }
 
         public async Task AddScheduler(Scheduler scheduler)
         {
             await Collection.ReplaceOneAsync(sch => sch.Id == scheduler.Id,
-                scheduler, new UpdateOptions()
+                scheduler, new ReplaceOptions
                 {
                     IsUpsert = true
                 }).ConfigureAwait(false);

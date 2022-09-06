@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Extensions;
@@ -12,8 +13,11 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
     [CollectionName("jobs")]
     internal class JobDetailRepository : BaseRepository<JobDetail>
     {
-        public JobDetailRepository(IMongoDatabase database, string instanceName, string collectionPrefix = null)
-            : base(database, instanceName, collectionPrefix)
+        public JobDetailRepository(IMongoDatabase database,
+            string instanceName,
+            ILogger<JobDetailRepository> logger,
+            string? collectionPrefix = null)
+            : base(database, instanceName, logger, collectionPrefix)
         {
         }
 
@@ -48,7 +52,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
         {
             var result = await Collection.ReplaceOneAsync(detail => detail.Id == jobDetail.Id,
                 jobDetail,
-                new UpdateOptions
+                new ReplaceOptions
                 {
                     IsUpsert = upsert
                 }).ConfigureAwait(false);
@@ -74,7 +78,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public async Task<long> GetCount()
         {
-            return await Collection.Find(detail => detail.Id.InstanceName == InstanceName).CountAsync().ConfigureAwait(false);
+            return await Collection.Find(detail => detail.Id.InstanceName == InstanceName).CountDocumentsAsync().ConfigureAwait(false);
         }
     }
 }

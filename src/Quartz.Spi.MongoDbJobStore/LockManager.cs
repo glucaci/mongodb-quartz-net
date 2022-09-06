@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Quartz.Spi.MongoDbJobStore.Models;
 using Quartz.Spi.MongoDbJobStore.Repositories;
@@ -17,8 +17,6 @@ namespace Quartz.Spi.MongoDbJobStore
     {
         private static readonly TimeSpan SleepThreshold = TimeSpan.FromMilliseconds(1000);
 
-        private static readonly ILog Log = LogManager.GetLogger<LockManager>();
-
         private readonly LockRepository _lockRepository;
 
         private readonly ConcurrentDictionary<LockType, LockInstance> _pendingLocks =
@@ -28,9 +26,15 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private bool _disposed;
 
-        public LockManager(IMongoDatabase database, string instanceName, string collectionPrefix)
+        private ILogger logger;
+
+        public LockManager(IMongoDatabase database, 
+            string instanceName, 
+            ILogger<LockManager> logger,
+            string? collectionPrefix=null)
         {
-            _lockRepository = new LockRepository(database, instanceName, collectionPrefix);
+            this.logger = logger;
+            _lockRepository = new LockRepository(database, instanceName, logger,collectionPrefix);
         }
 
         public void Dispose()
@@ -107,7 +111,7 @@ namespace Quartz.Spi.MongoDbJobStore
         {
             if (!_pendingLocks.TryRemove(lockInstance.LockType, out _))
             {
-                Log.Warn($"Unable to remove pending lock {lockInstance.LockType} on {lockInstance.InstanceId}");
+                logger.LogWarning($"Unable to remove pending lock {lockInstance.LockType} on {lockInstance.InstanceId}");
             }
         }
 
