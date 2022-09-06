@@ -23,12 +23,9 @@ jobs:
         run: |
           docker-compose -p mongo_quartz down 
           docker-compose -p mongo_quartz rm -f
-      - name: List files
-        run: |
-          ls tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport
       - name: Upload coverage report artifact
         uses: actions/upload-artifact@v2.2.3
         with:
           name: CoverageReport # Artifact name        
-          path: tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport/ # Directory containing files to upload
+          path: tests/Quartz.Spi.MongoDbJobStore.Tests/coveragereport # Directory containing files to upload
           retention-days: 5

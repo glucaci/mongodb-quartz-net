@@ -4,6 +4,15 @@
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <AssemblyName>Quartz.Spi.MongoDbJobStore</AssemblyName>
     <IsPackable>true</IsPackable>
+    <PackageProjectUrl>https://github.com/Cricle/mongodb-quartz-net</PackageProjectUrl>
+    <PackageReleaseNotes>Release notes: https://github.com/Cricle/mongodb-quartz-net/releases/$(Version)
+
+Fork from https://github.com/glucaci/mongodb-quartz-net.git
+Change Comon.Log to MS Log</PackageReleaseNotes>
+    <Product>Quartz.Spi.MongoDbJobStore.MSLog</Product>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>MSLog.$(AssemblyName)</PackageId>
+    <RepositoryUrl>https://github.com/Cricle/mongodb-quartz-net</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
