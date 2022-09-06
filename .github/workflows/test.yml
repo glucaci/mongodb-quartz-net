@@ -1,4 +1,4 @@
-name: .NET Build 
+name: .NET Test 
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
         uses: isbang/compose-action@v1.2.0
       
       - name: Run test
-        run: 'bash -c "test.sh"'
+        run: './test.sh'
 
       - name: Upload coverage report artifact
         uses: actions/upload-artifact@v2.2.3
