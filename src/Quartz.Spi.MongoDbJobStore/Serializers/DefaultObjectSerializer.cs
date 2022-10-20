@@ -1,6 +1,5 @@
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
-
+using System.Text;
+using Newtonsoft.Json;
 using Quartz.Spi;
 
 namespace Quartz.Simpl
@@ -12,6 +11,8 @@ namespace Quartz.Simpl
     /// <author>Marko Lahma</author>
     public class DefaultObjectSerializer : IObjectSerializer
     {
+        JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
+
         public void Initialize()
         {
         }
@@ -23,12 +24,8 @@ namespace Quartz.Simpl
         /// <param name="obj">Object to serialize.</param>
         public byte[] Serialize<T>(T obj) where T : class
         {
-            using (MemoryStream ms = new MemoryStream())
-            {
-                BinaryFormatter bf = new BinaryFormatter();
-                bf.Serialize(ms, obj);
-                return ms.ToArray();
-            }
+            string serializedData = JsonConvert.SerializeObject(obj, settings);
+            return Encoding.ASCII.GetBytes(serializedData);
         }
 
         /// <summary>
@@ -37,11 +34,8 @@ namespace Quartz.Simpl
         /// <param name="data">Data to deserialize object from.</param>
         public T DeSerialize<T>(byte[] data) where T : class
         {
-            using (MemoryStream ms = new MemoryStream(data))
-            {
-                BinaryFormatter bf = new BinaryFormatter();
-                return (T)bf.Deserialize(ms);
-            }
+            string str = Encoding.ASCII.GetString(data);
+            return JsonConvert.DeserializeObject<T>(str, settings);
         }
     }
 }

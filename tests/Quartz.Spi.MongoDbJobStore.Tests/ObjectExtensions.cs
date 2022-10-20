@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
+﻿using Newtonsoft.Json;
 
 namespace Quartz.Util
 {
@@ -14,18 +13,10 @@ namespace Quartz.Util
         /// <param name="obj"></param>
         public static T DeepClone<T>(this T obj) where T : class
         {
-            if (obj == null)
-            {
-                return null;
-            }
-
-            BinaryFormatter bf = new BinaryFormatter();
-            using (MemoryStream ms = new MemoryStream())
-            {
-                bf.Serialize(ms, obj);
-                ms.Seek(0, SeekOrigin.Begin);
-                return (T)bf.Deserialize(ms);
-            }
+            if (obj == null) return default(T);
+            var clonedObj = JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(obj));
+            clonedObj = obj;
+            return clonedObj;
         }
     }
 }
