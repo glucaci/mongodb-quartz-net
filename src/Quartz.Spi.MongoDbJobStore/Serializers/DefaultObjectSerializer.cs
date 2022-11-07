@@ -11,7 +11,7 @@ namespace Quartz.Simpl
     /// <author>Marko Lahma</author>
     public class DefaultObjectSerializer : IObjectSerializer
     {
-        JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
+        JsonSerializerSettings serializerSettings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
 
         public void Initialize()
         {
@@ -24,8 +24,8 @@ namespace Quartz.Simpl
         /// <param name="obj">Object to serialize.</param>
         public byte[] Serialize<T>(T obj) where T : class
         {
-            string serializedData = JsonConvert.SerializeObject(obj, settings);
-            return Encoding.ASCII.GetBytes(serializedData);
+            string serializedData = JsonConvert.SerializeObject(obj, serializerSettings);
+            return Encoding.UTF8.GetBytes(serializedData);
         }
 
         /// <summary>
@@ -34,8 +34,8 @@ namespace Quartz.Simpl
         /// <param name="data">Data to deserialize object from.</param>
         public T DeSerialize<T>(byte[] data) where T : class
         {
-            string str = Encoding.ASCII.GetString(data);
-            return JsonConvert.DeserializeObject<T>(str, settings);
+            string str = Encoding.UTF8.GetString(data);
+            return JsonConvert.DeserializeObject<T>(str, serializerSettings);
         }
     }
 }
