@@ -296,7 +296,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             _scheduler.Context.Put(DateStamps, jobExecTimestamps);
 
             var job1 = JobBuilder.Create<SimpleJobWithData>().WithIdentity("job1")
-                .SetJobData(SimpleJobWithData.Create("test-variable")).Build();
+                .SetJobData(SimpleJobWithData.Create("test-variable", new List<string>(){"test-value"})).Build();
             var trigger1 = TriggerBuilder.Create().ForJob(job1).Build();
 
             var sTime = DateTime.UtcNow;
