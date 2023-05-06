@@ -9,13 +9,13 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
     {
         public const string Barrier = "BARRIER";
         public const string DateStamps = "DATE_STAMPS";
-        public static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(125);
+        public static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(120);
 
         protected async Task<IScheduler> CreateScheduler(string instanceName = "QUARTZ_TEST")
         {
             var properties = new NameValueCollection
             {
-                ["quartz.serializer.type"] = "binary",
+                ["quartz.serializer.type"] = "json",
                 [StdSchedulerFactory.PropertySchedulerInstanceName] = instanceName,
                 [StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}",
                 [StdSchedulerFactory.PropertyJobStoreType] = typeof(MongoDbJobStore).AssemblyQualifiedName,
