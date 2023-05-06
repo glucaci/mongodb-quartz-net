@@ -11,37 +11,51 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 {
     internal static class JobStoreClassMap
     {
+        public static BsonClassMap<TClass> RegisterClassMap<TClass>(
+            Action<BsonClassMap<TClass>> classMapInitializer)
+        {
+            try
+            {
+                return BsonClassMap.RegisterClassMap<TClass>(map =>
+                    classMapInitializer(map));
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+        
         public static void RegisterClassMaps()
         {
             BsonSerializer.RegisterGenericSerializerDefinition(typeof (ISet<>), typeof (SetSerializer<>));
-            BsonSerializer.RegisterSerializer(new JobDataMapSerializer());
+            // BsonSerializer.RegisterSerializer(new JobDataMapSerializer());
 
-            BsonClassMap.RegisterClassMap<Key<JobKey>>(map =>
+            RegisterClassMap<Key<JobKey>>(map =>
             {
                 map.AutoMap();
                 map.MapProperty(key => key.Group);
                 map.MapProperty(key => key.Name);
                 map.AddKnownType(typeof(JobKey));
             });
-            BsonClassMap.RegisterClassMap<Key<TriggerKey>>(map =>
+            RegisterClassMap<Key<TriggerKey>>(map =>
             {
                 map.AutoMap();
                 map.MapProperty(key => key.Group);
                 map.MapProperty(key => key.Name);
                 map.AddKnownType(typeof(TriggerKey));
             });
-            BsonClassMap.RegisterClassMap<JobKey>(map =>
+            RegisterClassMap<JobKey>(map =>
             {
                 map.MapCreator(jobKey => new JobKey(jobKey.Name));
                 map.MapCreator(jobKey => new JobKey(jobKey.Name, jobKey.Group));
             });
 
-            BsonClassMap.RegisterClassMap<TriggerKey>(map =>
+            RegisterClassMap<TriggerKey>(map =>
             {
                 map.MapCreator(triggerKey => new TriggerKey(triggerKey.Name));
                 map.MapCreator(triggerKey => new TriggerKey(triggerKey.Name, triggerKey.Group));
             });
-            BsonClassMap.RegisterClassMap<TimeOfDay>(map =>
+            RegisterClassMap<TimeOfDay>(map =>
             {
                 map.AutoMap();
                 map.MapProperty(day => day.Hour);
@@ -51,13 +65,13 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                 map.MapCreator(day => new TimeOfDay(day.Hour, day.Minute));
             });
 
-            BsonClassMap.RegisterClassMap<JobDetail>(map =>
+            RegisterClassMap<JobDetail>(map =>
             {
                 map.AutoMap();
                 map.MapProperty(detail => detail.JobType).SetSerializer(new TypeSerializer());
             });
 
-            BsonClassMap.RegisterClassMap<DailyTimeIntervalTrigger>(map =>
+            RegisterClassMap<DailyTimeIntervalTrigger>(map =>
             {
                 map.AutoMap();
                 var serializer =

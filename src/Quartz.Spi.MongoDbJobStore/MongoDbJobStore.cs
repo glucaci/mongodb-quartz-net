@@ -531,6 +531,11 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
+        public Task ResetTriggerFromErrorState(TriggerKey triggerKey, CancellationToken cancellationToken = new CancellationToken())
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task PauseTrigger(TriggerKey triggerKey, CancellationToken token = default(CancellationToken))
         {
             try
@@ -1347,7 +1352,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
                     var operableTrigger = (IOperableTrigger) nextTrigger.GetTrigger();
                     operableTrigger.FireInstanceId = GetFiredTriggerRecordId();
-
+                   
                     var firedTrigger = new FiredTrigger(operableTrigger.FireInstanceId, nextTrigger, null)
                     {
                         State = Models.TriggerState.Acquired,

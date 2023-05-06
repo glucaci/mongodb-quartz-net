@@ -286,6 +286,38 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         }
 
         [Fact]
+        public async Task TestJobDataIsInjectedProperly()
+        {
+            var jobExecTimestamps = new List<DateTime>();
+
+            var barrier = new Barrier(2);
+
+            _scheduler.Context.Put(Barrier, barrier);
+            _scheduler.Context.Put(DateStamps, jobExecTimestamps);
+
+            var job1 = JobBuilder.Create<SimpleJobWithData>().WithIdentity("job1")
+                .SetJobData(SimpleJobWithData.Create("test-variable")).Build();
+            var trigger1 = TriggerBuilder.Create().ForJob(job1).Build();
+
+            var sTime = DateTime.UtcNow;
+
+            await _scheduler.ScheduleJob(job1, trigger1);
+            await _scheduler.Start();
+
+            barrier.SignalAndWait(TestTimeout);
+
+            await _scheduler.Shutdown(false);
+
+            Assert.NotEmpty(jobExecTimestamps);
+            var fTime = jobExecTimestamps.First();
+            var diff = fTime - sTime;
+            var isFastEnough = diff < TimeSpan.FromMilliseconds(7000);
+
+            isFastEnough.Should().BeTrue("Immediate trigger did not fire within a reasonable amount of time.");
+            // This is dangerously subjective!  but what else to do?
+        }
+        
+        [Fact]
         public async Task TestAbilityToFireImmediatelyWhenStartedAfter()
         {
            var jobExecTimestamps = new List<DateTime>();
@@ -307,9 +339,12 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
            await _scheduler.Shutdown(false);
 
-           var fTime = jobExecTimestamps[0];
+           Assert.NotEmpty(jobExecTimestamps);
+           var fTime = jobExecTimestamps.First();
+           var diff = fTime - sTime;
+           var isFastEnough = diff < TimeSpan.FromMilliseconds(7000);
 
-           (fTime - sTime < TimeSpan.FromMilliseconds(7000)).Should().BeTrue("Immediate trigger did not fire within a reasonable amount of time.");
+           isFastEnough.Should().BeTrue("Immediate trigger did not fire within a reasonable amount of time.");
            // This is dangerously subjective!  but what else to do?
         }
 
