@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Quartz.Spi.MongoDbJobStore</RootNamespace>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
     <Nullable>enable</Nullable>
@@ -22,7 +22,7 @@
     <Product>Quartz.Spi.MongoDbJobStore</Product>
     <Authors>Gabriel Lucaci</Authors>
     <Company>Gabriel Lucaci</Company>
-    <Copyright>Copyright © 2021 Gabriel Lucaci</Copyright>
+    <Copyright>Copyright © $([System.DateTime]::Now.Year) Gabriel Lucaci</Copyright>
     <PackageLicenseUrl>https://github.com/glucaci/mongodb-quartz-net/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/glucaci/mongodb-quartz-net</PackageProjectUrl>
     <PackageReleaseNotes>Release notes: https://github.com/glucaci/mongodb-quartz-net/releases/$(Version)</PackageReleaseNotes>
@@ -42,7 +42,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
   </ItemGroup>
 
 </Project>
