@@ -261,5 +261,12 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             }
             return hasReachedLimit;
         }
+
+        public override async Task EnsureIndex()
+        {
+            await Collection.Indexes.CreateOneAsync(
+                    IndexBuilder.Ascending(trigger => trigger.NextFireTime).Descending(trigger => trigger.Priority))
+                .ConfigureAwait(false);
+        }
     }
 }
