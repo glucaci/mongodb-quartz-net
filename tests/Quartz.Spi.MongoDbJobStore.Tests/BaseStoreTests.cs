@@ -24,7 +24,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 
             var properties = new NameValueCollection
             {
-                ["quartz.serializer.type"] = "binary",
+                ["quartz.serializer.type"] = "json",
                 [StdSchedulerFactory.PropertySchedulerInstanceName] = instanceName,
                 [StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}",
                 [StdSchedulerFactory.PropertyJobStoreType] = typeof(MongoDbJobStore).AssemblyQualifiedName,
