@@ -24,12 +24,15 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public async Task<List<JobKey>> GetJobsKeys(GroupMatcher<JobKey> matcher)
         {
-            return
-                await Collection.Find(FilterBuilder.And(
+            var jobKeys = await Collection
+                .Find(FilterBuilder.And(
                     FilterBuilder.Eq(detail => detail.Id.InstanceName, InstanceName),
                     FilterBuilder.Regex(detail => detail.Id.Group, matcher.ToBsonRegularExpression())))
-                    .Project(detail => detail.Id.GetJobKey())
-                    .ToListAsync().ConfigureAwait(false);
+                .Project(detail => detail.Id)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            return jobKeys.Select(j => j.GetJobKey()).ToList();
         }
 
         public async Task<IEnumerable<string>> GetJobGroupNames()

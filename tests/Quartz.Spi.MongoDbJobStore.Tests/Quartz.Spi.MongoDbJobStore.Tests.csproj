@@ -1,24 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net452;net462;netcoreapp2.0</TargetFrameworks>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>Quartz.Spi.MongoDbJobStore.Tests</RootNamespace>
-    <AssemblyName>Quartz.Spi.MongoDbJobStore.Tests</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net462;net8.0</TargetFrameworks>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>Quartz.Spi.MongoDbJobStore.Tests</RootNamespace>
+		<AssemblyName>Quartz.Spi.MongoDbJobStore.Tests</AssemblyName>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="FluentAssertions" Version="5.4.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
-    <PackageReference Include="System.Runtime.InteropServices.RuntimeInformation" Version="4.3.0" />
-    <PackageReference Include="Common.Logging" Version="3.4.1" />
-    <PackageReference Include="xunit" Version="2.3.1" />
-    <PackageReference Include="xunit.assert" Version="2.3.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="FluentAssertions" Version="6.12.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.0" />
+		<PackageReference Include="Squadron.Mongo" Version="0.18.0" />
+		<PackageReference Include="xunit" Version="2.4.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
+		<PackageReference Include="Quartz.Serialization.Json" Version="3.8.0" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Quartz.Spi.MongoDbJobStore\Quartz.Spi.MongoDbJobStore.csproj" />
-  </ItemGroup>
-  
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Quartz.Spi.MongoDbJobStore\Quartz.Spi.MongoDbJobStore.csproj" />
+	</ItemGroup>
+
 </Project>
