@@ -531,6 +531,30 @@ namespace Quartz.Spi.MongoDbJobStore
             }
         }
 
+        public async Task ResetTriggerFromErrorState(TriggerKey triggerKey, CancellationToken cancellationToken = new CancellationToken())
+        {
+            try
+            {
+                using (await _lockManager.AcquireLock(LockType.TriggerAccess, InstanceId).ConfigureAwait(false))
+                {
+                    var currentState = await GetTriggerState(triggerKey, cancellationToken).ConfigureAwait(false);
+                    if (currentState != TriggerState.Error)
+                    {
+                        return;
+                    }
+
+                    var pausedTriggerGroups = await GetPausedTriggerGroups(cancellationToken).ConfigureAwait(false);
+                    var newState = pausedTriggerGroups.Contains(triggerKey.Group) ? Models.TriggerState.Paused : Models.TriggerState.Waiting;
+
+                    await _triggerRepository.UpdateTriggerState(triggerKey, newState).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new JobPersistenceException(ex.Message, ex);
+            }
+        }
+
         public async Task PauseTrigger(TriggerKey triggerKey, CancellationToken token = default(CancellationToken))
         {
             try
