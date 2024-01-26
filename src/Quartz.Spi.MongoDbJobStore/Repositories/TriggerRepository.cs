@@ -276,8 +276,22 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public override async Task EnsureIndex()
         {
-            await Collection.Indexes.CreateOneAsync(
-                    IndexBuilder.Ascending(trigger => trigger.NextFireTime).Descending(trigger => trigger.Priority))
+            var nextFireIndex = new CreateIndexModel<Trigger>(
+                IndexBuilder.Ascending(trigger => trigger.NextFireTime).Descending(trigger => trigger.Priority),
+                new CreateIndexOptions()
+                {
+                    Name = "NextFireTime_Priority_v1"
+                });
+
+            var instanceNameIndex = new CreateIndexModel<Trigger>(
+                IndexBuilder.Ascending(trigger => trigger.Id.InstanceName).Descending(trigger => trigger.State),
+                new CreateIndexOptions()
+                {
+                    Name = "InstanceName_State_v1"
+                });
+
+            await Collection.Indexes
+                .CreateManyAsync(new [] { nextFireIndex, instanceNameIndex })
                 .ConfigureAwait(false);
         }
     }
