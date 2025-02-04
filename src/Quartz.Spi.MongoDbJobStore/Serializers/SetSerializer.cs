@@ -1,6 +1,6 @@
-﻿using MongoDB.Bson.Serialization;
+﻿using System.Collections.Generic;
+using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
-using System.Collections.Generic;
 
 namespace Quartz.Spi.MongoDbJobStore.Serializers
 {
@@ -10,7 +10,7 @@ namespace Quartz.Spi.MongoDbJobStore.Serializers
 
         public SetSerializer()
         {
-            _serializer = BsonSerializer.LookupSerializer(typeof(IEnumerable<T>));
+            _serializer = BsonSerializer.LookupSerializer(typeof (IEnumerable<T>));
         }
 
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, ISet<T> value)

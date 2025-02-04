@@ -7,8 +7,8 @@ using Quartz.Impl.Matchers;
 using Quartz.Spi.MongoDbJobStore.Tests.Jobs;
 using Quartz.Tests.Integration.Impl;
 using FluentAssertions;
-using Xunit;
 using Squadron;
+using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
@@ -330,7 +330,7 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 .WithSimpleSchedule(x => x.WithIntervalInSeconds(1).RepeatForever())
                 .Build();
 
-            var triggersForJob = (IReadOnlyCollection<ITrigger>)new HashSet<ITrigger> { trigger1, trigger2 };
+            var triggersForJob = (IReadOnlyCollection<ITrigger>)new HashSet<ITrigger>{trigger1, trigger2};
 
             await _scheduler.ScheduleJob(job, triggersForJob, true);
 

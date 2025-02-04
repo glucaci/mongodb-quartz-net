@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Quartz.Spi.MongoDbJobStore</RootNamespace>
-    <LangVersion>preview</LangVersion>
+    <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
     <Nullable>enable</Nullable>

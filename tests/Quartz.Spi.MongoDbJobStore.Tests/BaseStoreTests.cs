@@ -22,24 +22,6 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         {
             var db = _mongoResource.CreateDatabase();
 
-            string baseConn = _mongoResource.ConnectionString;
-            string dbName = db.DatabaseNamespace.DatabaseName;
-            string finalConnectionString;
-
-            int queryIndex = baseConn.IndexOf('?');
-            if (queryIndex >= 0)
-            {
-                string prefix = baseConn.Substring(0, queryIndex);
-                prefix = prefix.TrimEnd('/');
-                string queryPart = baseConn.Substring(queryIndex);
-                finalConnectionString = $"{prefix}/{dbName}{queryPart}";
-            }
-            else
-            {
-                baseConn = baseConn.TrimEnd('/');
-                finalConnectionString = $"{baseConn}/{dbName}";
-            }
-
             var properties = new NameValueCollection
             {
                 ["quartz.serializer.type"] = "json",
@@ -47,14 +29,12 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 [StdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}",
                 [StdSchedulerFactory.PropertyJobStoreType] = typeof(MongoDbJobStore).AssemblyQualifiedName,
                 [$"{StdSchedulerFactory.PropertyJobStorePrefix}.{StdSchedulerFactory.PropertyDataSourceConnectionString}"]
-                    = finalConnectionString,
+                    = $"{_mongoResource.ConnectionString}/{db.DatabaseNamespace.DatabaseName}",
                 [$"{StdSchedulerFactory.PropertyJobStorePrefix}.collectionPrefix"] = "prefix"
             };
 
             var scheduler = new StdSchedulerFactory(properties);
             return await scheduler.GetScheduler();
         }
-
-
     }
 }
