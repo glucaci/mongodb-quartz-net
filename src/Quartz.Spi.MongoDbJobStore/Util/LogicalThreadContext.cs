@@ -26,12 +26,8 @@
  */
 
 // Workaround for getting off remoting removed in NET Core: http://www.cazzulino.com/callcontext-netstandard-netcore.html
-#if NET452
-using System.Runtime.Remoting.Messaging;
-#else
 using System.Collections.Concurrent;
 using System.Threading;
-#endif
 
 namespace Quartz.Util
 {
@@ -48,18 +44,14 @@ namespace Quartz.Util
         /// </summary>
         /// <param name="name">The name of the item.</param>
         /// <returns>The object in the call context associated with the specified name or null if no object has been stored previously</returns>
-
-#if !NET452
-        static ConcurrentDictionary<string, AsyncLocal<object>> state = new ConcurrentDictionary<string, AsyncLocal<object>>();
-#endif
+        static ConcurrentDictionary<string, AsyncLocal<object>> state =
+            new ConcurrentDictionary<string, AsyncLocal<object>>();
 
         public static T GetData<T>(string name)
         {
-#if NET452
-            return (T)CallContext.GetData(name);
-#else
-            return state.TryGetValue(name, out AsyncLocal<object> data) ? (T)data.Value : default(T);
-#endif
+            return state.TryGetValue(name, out AsyncLocal<object> data)
+                ? (T)data.Value
+                : default(T);
         }
 
         /// <summary>
@@ -69,11 +61,7 @@ namespace Quartz.Util
         /// <param name="value">The object to store in the call context.</param>
         public static void SetData(string name, object value)
         {
-#if NET452
-            CallContext.SetData(name, value);
-#else
             state.GetOrAdd(name, _ => new AsyncLocal<object>()).Value = value;
-#endif
         }
 
         /// <summary>
@@ -82,11 +70,7 @@ namespace Quartz.Util
         /// <param name="name">The name of the data slot to empty.</param>
         public static void FreeNamedDataSlot(string name)
         {
-#if NET452
-            CallContext.FreeNamedDataSlot(name);
-#else
             state.TryRemove(name, out AsyncLocal<object> discard);
-#endif
         }
     }
 }
