@@ -19,6 +19,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <Version Condition="'$(Version)' == ''">0.0.0</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion>$(Version)</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <Product>Quartz.Spi.MongoDbJobStore</Product>
     <Authors>Gabriel Lucaci</Authors>
     <Company>Gabriel Lucaci</Company>
