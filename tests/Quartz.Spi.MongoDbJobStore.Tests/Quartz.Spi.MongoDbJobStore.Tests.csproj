@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net472;netstandard2.1;net8.0</TargetFrameworks>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>Quartz.Spi.MongoDbJobStore.Tests</RootNamespace>
-    <AssemblyName>Quartz.Spi.MongoDbJobStore.Tests</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net462;net8.0;net9.0</TargetFrameworks>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>Quartz.Spi.MongoDbJobStore.Tests</RootNamespace>
+		<AssemblyName>Quartz.Spi.MongoDbJobStore.Tests</AssemblyName>
+	</PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
