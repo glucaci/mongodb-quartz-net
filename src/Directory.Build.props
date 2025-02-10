@@ -20,8 +20,8 @@
 
   <PropertyGroup>
     <Version Condition="'$(Version)' == ''">0.0.0</Version>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
-    <FileVersion>$(Version)</FileVersion>
+    <AssemblyVersion>$(Version.Split('-')[0]).0</AssemblyVersion>
+    <FileVersion>$(Version.Split('-')[0]).0</FileVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
   </PropertyGroup>
 

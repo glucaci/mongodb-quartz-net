@@ -19,3 +19,8 @@ jobs:
       run: dotnet build --no-restore --configuration Release /p:Version=${{ github.ref_name }}
     - name: Pack
       run: dotnet pack --no-build --configuration Release --output ./artifacts /p:Version=${{ github.ref_name }}
+    - name: Upload NuGet package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/*.nupkg
