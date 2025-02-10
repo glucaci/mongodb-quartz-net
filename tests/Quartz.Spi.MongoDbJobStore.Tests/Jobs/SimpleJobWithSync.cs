@@ -11,8 +11,8 @@ namespace Quartz.Spi.MongoDbJobStore.Tests.Jobs
         {
             try
             {
-                var jobExecTimestamps = (List<DateTime>) context.Scheduler.Context.Get(BaseStoreTests.DateStamps);
-                var barrier = (Barrier) context.Scheduler.Context.Get(BaseStoreTests.Barrier);
+                var jobExecTimestamps = (List<DateTime>)context.Scheduler.Context.Get(BaseStoreTests.DateStamps);
+                var barrier = (Barrier)context.Scheduler.Context.Get(BaseStoreTests.Barrier);
 
                 jobExecTimestamps.Add(DateTime.UtcNow);
 

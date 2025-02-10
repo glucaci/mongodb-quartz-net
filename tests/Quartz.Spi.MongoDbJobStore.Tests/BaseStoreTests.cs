@@ -8,10 +8,10 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
 {
     public abstract class BaseStoreTests
     {
-        private readonly MongoResource _mongoResource;
         public const string Barrier = "BARRIER";
         public const string DateStamps = "DATE_STAMPS";
         public static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(125);
+        private readonly MongoResource _mongoResource;
 
         protected BaseStoreTests(MongoResource mongoResource)
         {
@@ -22,16 +22,16 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         {
             var db = _mongoResource.CreateDatabase();
 
-            string baseConn = _mongoResource.ConnectionString;
-            string dbName = db.DatabaseNamespace.DatabaseName;
+            var baseConn = _mongoResource.ConnectionString;
+            var dbName = db.DatabaseNamespace.DatabaseName;
             string finalConnectionString;
 
-            int queryIndex = baseConn.IndexOf('?');
+            var queryIndex = baseConn.IndexOf('?');
             if (queryIndex >= 0)
             {
-                string prefix = baseConn.Substring(0, queryIndex);
+                var prefix = baseConn.Substring(0, queryIndex);
                 prefix = prefix.TrimEnd('/');
-                string queryPart = baseConn.Substring(queryIndex);
+                var queryPart = baseConn.Substring(queryIndex);
                 finalConnectionString = $"{prefix}/{dbName}{queryPart}";
             }
             else
@@ -54,7 +54,5 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
             var scheduler = new StdSchedulerFactory(properties);
             return await scheduler.GetScheduler();
         }
-
-
     }
 }

@@ -1,16 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
+using FluentAssertions;
 using Quartz.Impl;
 using Quartz.Impl.Calendar;
 using Quartz.Impl.Matchers;
 using Quartz.Impl.Triggers;
-//using Quartz.Job;
 using Quartz.Spi;
 using Quartz.Util;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using FluentAssertions;
-using Xunit;
+//using Quartz.Job;
 
 namespace Quartz.Tests.Integration.Impl
 {
@@ -32,7 +31,7 @@ namespace Quartz.Tests.Integration.Impl
 
                     // QRTZNET-86
                     var t = await scheduler.GetTrigger(new TriggerKey("NonExistingTrigger", "NonExistingGroup"));
-                    (t).Should().BeNull();
+                    t.Should().BeNull();
 
                     var cal = new AnnualCalendar();
                     await scheduler.AddCalendar("annualCalendar", cal, false, true);
@@ -41,7 +40,7 @@ namespace Quartz.Tests.Integration.Impl
                         TimeSpan.FromMilliseconds(5));
                     calendarsTrigger.CalendarName = "annualCalendar";
 
-                    var jd = new JobDetailImpl("testJob", "test", typeof (NoOpJob));
+                    var jd = new JobDetailImpl("testJob", "test", typeof(NoOpJob));
                     await scheduler.ScheduleJob(jd, calendarsTrigger);
 
                     // QRTZNET-93
@@ -60,7 +59,7 @@ namespace Quartz.Tests.Integration.Impl
 
                     (await scheduler.GetCalendar("annualCalendar")).Should().NotBeNull();
 
-                    var lonelyJob = new JobDetailImpl("lonelyJob", "lonelyGroup", typeof (SimpleRecoveryJob));
+                    var lonelyJob = new JobDetailImpl("lonelyJob", "lonelyGroup", typeof(SimpleRecoveryJob));
                     lonelyJob.Durable = true;
                     lonelyJob.RequestsRecovery = true;
                     await scheduler.AddJob(lonelyJob, false);
@@ -70,7 +69,7 @@ namespace Quartz.Tests.Integration.Impl
 
                     var count = 1;
 
-                    var job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    var job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
 
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
@@ -85,11 +84,11 @@ namespace Quartz.Tests.Integration.Impl
 
                     // check that trigger was stored
                     var persisted = await scheduler.GetTrigger(new TriggerKey("trig_" + count, schedId));
-                    (persisted).Should().NotBeNull();
+                    persisted.Should().NotBeNull();
                     (persisted is SimpleTriggerImpl).Should().BeTrue();
 
                     count++;
-                    job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
                     job.RequestsRecovery = true;
@@ -99,7 +98,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(job, trigger);
 
                     count++;
-                    job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryStatefulJob));
+                    job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryStatefulJob));
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
                     job.RequestsRecovery = true;
@@ -109,7 +108,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(job, trigger);
 
                     count++;
-                    job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
                     job.RequestsRecovery = true;
@@ -119,7 +118,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(job, trigger);
 
                     count++;
-                    job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
                     job.RequestsRecovery = true;
@@ -127,7 +126,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(job, trigger);
 
                     count++;
-                    job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
                     job.RequestsRecovery = true;
@@ -138,7 +137,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(job, ct);
 
                     count++;
-                    job = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    job = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
                     // ask scheduler to re-Execute this job if it was in progress when
                     // the scheduler went down...
                     job.RequestsRecovery = true;
@@ -164,7 +163,7 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.UnscheduleJob(nt2.Key);
                     await scheduler.ScheduleJob(nt2);
 
-                    var triggerFromDb = (IDailyTimeIntervalTrigger) await scheduler.GetTrigger(nt2.Key);
+                    var triggerFromDb = (IDailyTimeIntervalTrigger)await scheduler.GetTrigger(nt2.Key);
                     triggerFromDb.StartTimeOfDay.Hour.Should().Be(1);
                     triggerFromDb.StartTimeOfDay.Minute.Should().Be(2);
                     triggerFromDb.StartTimeOfDay.Second.Should().Be(3);
@@ -186,14 +185,15 @@ namespace Quartz.Tests.Integration.Impl
                     await scheduler.ScheduleJob(intervalTrigger);
 
                     // bulk operations
-                    IJobDetail detail = new JobDetailImpl("job_" + count, schedId, typeof (SimpleRecoveryJob));
+                    IJobDetail detail = new JobDetailImpl("job_" + count, schedId, typeof(SimpleRecoveryJob));
                     ITrigger simple = new SimpleTriggerImpl("trig_" + count, schedId, 20,
                         TimeSpan.FromMilliseconds(4500));
-                    var triggers = (IReadOnlyCollection<ITrigger>)new HashSet<ITrigger> {simple};
-                    var info = (IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>)new Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>>
-                    {
-                        [detail] = triggers
-                    };
+                    var triggers = (IReadOnlyCollection<ITrigger>)new HashSet<ITrigger> { simple };
+                    var info = (IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>)
+                        new Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>>
+                        {
+                            [detail] = triggers
+                        };
 
                     await scheduler.ScheduleJobs(info, true);
 
