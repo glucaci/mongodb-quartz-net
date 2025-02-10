@@ -1,0 +1,22 @@
+name: Pull Request
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        framework: [net8.0, net9.0]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+    - name: Restore dependencies
+      run: dotnet restore -f ${{ matrix.framework }}
+    - name: Build
+      run: dotnet build --no-restore --framework ${{ matrix.framework }}
+    - name: Test
+      run: dotnet test --no-build --verbosity normal --framework ${{ matrix.framework }}
