@@ -62,18 +62,26 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
 
         public async Task<List<TriggerKey>> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
         {
-            return await Collection.Find(FilterBuilder.And(
-                FilterBuilder.Eq(trigger => trigger.Id.InstanceName, InstanceName),
-                FilterBuilder.Regex(trigger => trigger.Id.Group, matcher.ToBsonRegularExpression())))
-                .Project(trigger => trigger.Id.GetTriggerKey())
-                .ToListAsync().ConfigureAwait(false);
+            var triggerKeys = await Collection
+                .Find(FilterBuilder.And(
+                    FilterBuilder.Eq(trigger => trigger.Id.InstanceName, InstanceName),
+                    FilterBuilder.Regex(trigger => trigger.Id.Group, matcher.ToBsonRegularExpression())))
+                .Project(trigger => trigger.Id)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            return triggerKeys.Select(t => t.GetTriggerKey()).ToList();
         }
 
         public async Task<List<TriggerKey>> GetTriggerKeys(Models.TriggerState state)
         {
-            return await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.State == state)
-                .Project(trigger => trigger.Id.GetTriggerKey())
-                .ToListAsync().ConfigureAwait(false);
+            var triggerKeys = await Collection
+                .Find(trigger => trigger.Id.InstanceName == InstanceName && trigger.State == state)
+                .Project(trigger => trigger.Id)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            
+            return triggerKeys.Select(t => t.GetTriggerKey()).ToList();
         }
 
         public async Task<List<string>> GetTriggerGroupNames()
@@ -102,19 +110,23 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
             var noLaterThanDateTime = noLaterThan.UtcDateTime;
             var noEarlierThanDateTime = noEarlierThan.UtcDateTime;
 
-            return await Collection.Find(trigger => trigger.Id.InstanceName == InstanceName &&
-                                              trigger.State == Models.TriggerState.Waiting &&
-                                              trigger.NextFireTime <= noLaterThanDateTime &&
-                                              (trigger.MisfireInstruction == -1 ||
-                                               (trigger.MisfireInstruction != -1 &&
-                                                trigger.NextFireTime >= noEarlierThanDateTime)))
+            var triggerKeys = await Collection
+                .Find(trigger => trigger.Id.InstanceName == InstanceName &&
+                                 trigger.State == Models.TriggerState.Waiting &&
+                                 trigger.NextFireTime <= noLaterThanDateTime &&
+                                 (trigger.MisfireInstruction == -1 ||
+                                  (trigger.MisfireInstruction != -1 &&
+                                   trigger.NextFireTime >= noEarlierThanDateTime)))
                 .Sort(SortBuilder.Combine(
                     SortBuilder.Ascending(trigger => trigger.NextFireTime),
                     SortBuilder.Descending(trigger => trigger.Priority)
-                    ))
+                ))
                 .Limit(maxCount)
-                .Project(trigger => trigger.Id.GetTriggerKey())
-                .ToListAsync().ConfigureAwait(false);
+                .Project(trigger => trigger.Id)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            return triggerKeys.Select(t => t.GetTriggerKey()).ToList();
         }
 
         public async Task<long> GetCount()
@@ -236,7 +248,7 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                            trigger.MisfireInstruction != MisfireInstruction.IgnoreMisfirePolicy &&
                            trigger.NextFireTime < nextFireTime &&
                            trigger.State == Models.TriggerState.Waiting)
-                .Project(trigger => trigger.Id.GetTriggerKey())
+                .Project(trigger => trigger.Id)
                 .Sort(SortBuilder.Combine(
                     SortBuilder.Ascending(trigger => trigger.NextFireTime),
                     SortBuilder.Descending(trigger => trigger.Priority)
@@ -255,11 +267,32 @@ namespace Quartz.Spi.MongoDbJobStore.Repositories
                     }
                     else
                     {
-                        results.Add(triggerKey);
+                        results.Add(triggerKey.GetTriggerKey());
                     }
                 }
             }
             return hasReachedLimit;
+        }
+
+        public override async Task EnsureIndex()
+        {
+            var nextFireIndex = new CreateIndexModel<Trigger>(
+                IndexBuilder.Ascending(trigger => trigger.NextFireTime).Descending(trigger => trigger.Priority),
+                new CreateIndexOptions()
+                {
+                    Name = "NextFireTime_Priority_v1"
+                });
+
+            var instanceNameIndex = new CreateIndexModel<Trigger>(
+                IndexBuilder.Ascending(trigger => trigger.Id.InstanceName).Descending(trigger => trigger.State),
+                new CreateIndexOptions()
+                {
+                    Name = "InstanceName_State_v1"
+                });
+
+            await Collection.Indexes
+                .CreateManyAsync(new [] { nextFireIndex, instanceNameIndex })
+                .ConfigureAwait(false);
         }
     }
 }

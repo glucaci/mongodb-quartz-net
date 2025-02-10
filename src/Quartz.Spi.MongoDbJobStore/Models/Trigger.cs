@@ -92,8 +92,8 @@ namespace Quartz.Spi.MongoDbJobStore.Models
             trigger.Description = Description;
             trigger.JobDataMap = JobDataMap;
             trigger.MisfireInstruction = MisfireInstruction;
-            trigger.EndTimeUtc = EndTime;
             trigger.StartTimeUtc = StartTime;
+            trigger.EndTimeUtc = EndTime;
             trigger.Priority = Priority;
             trigger.SetNextFireTimeUtc(NextFireTime);
             trigger.SetPreviousFireTimeUtc(PreviousFireTime);

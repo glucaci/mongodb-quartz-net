@@ -1,0 +1,27 @@
+name: Release Packages
+run-name: 'Release Packages 📦 ${{ github.ref_name }}'
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore --configuration Release /p:Version=${{ github.ref_name }}
+    - name: Pack
+      run: dotnet pack --no-build --configuration Release --output ./artifacts /p:Version=${{ github.ref_name }}
+    - name: Publish
+      shell: pwsh
+      run: |
+        Get-ChildItem -Path ./artifacts -Recurse | ForEach-Object {
+          dotnet nuget push $_.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        }
