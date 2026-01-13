@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.Json;
 
 namespace Quartz.Util
 {
@@ -18,13 +19,11 @@ namespace Quartz.Util
             {
                 return null;
             }
-
-            BinaryFormatter bf = new BinaryFormatter();
+            
             using (MemoryStream ms = new MemoryStream())
             {
-                bf.Serialize(ms, obj);
-                ms.Seek(0, SeekOrigin.Begin);
-                return (T)bf.Deserialize(ms);
+                JsonSerializer.Serialize(ms, obj);
+                return JsonSerializer.Deserialize<T>(ms);
             }
         }
     }

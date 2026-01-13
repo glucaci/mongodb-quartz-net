@@ -1570,5 +1570,10 @@ namespace Quartz.Spi.MongoDbJobStore
             return new RecoverMisfiredJobsResult(hasMoreMisfiredTriggers, misfiredTriggers.Count,
                 earliestNewTime);
         }
+
+        public Task ResetTriggerFromErrorState(TriggerKey triggerKey, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

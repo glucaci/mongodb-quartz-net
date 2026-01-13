@@ -1,6 +1,6 @@
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-
+using System.Text.Json;
 using Quartz.Spi;
 
 namespace Quartz.Simpl
@@ -25,8 +25,7 @@ namespace Quartz.Simpl
         {
             using (MemoryStream ms = new MemoryStream())
             {
-                BinaryFormatter bf = new BinaryFormatter();
-                bf.Serialize(ms, obj);
+                JsonSerializer.Serialize(ms, obj);
                 return ms.ToArray();
             }
         }
@@ -39,8 +38,7 @@ namespace Quartz.Simpl
         {
             using (MemoryStream ms = new MemoryStream(data))
             {
-                BinaryFormatter bf = new BinaryFormatter();
-                return (T)bf.Deserialize(ms);
+                return JsonSerializer.Deserialize(ms, typeof(T)) as T;
             }
         }
     }
