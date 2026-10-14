@@ -26,6 +26,7 @@ namespace Quartz.Spi.MongoDbJobStore
 
         private static readonly ILog Log = LogManager.GetLogger<MongoDbJobStore>();
         private static long _fireTriggerRecordCounter = DateTime.UtcNow.Ticks;
+        private readonly IMongoDatabase? _providedDatabase;
         private CalendarRepository _calendarRepository;
         private IMongoClient _client;
         private IMongoDatabase _database;
@@ -52,6 +53,16 @@ namespace Quartz.Spi.MongoDbJobStore
             MaxMisfiresToHandleAtATime = 20;
             RetryableActionErrorLogThreshold = 4;
             DbRetryInterval = TimeSpan.FromSeconds(15);
+        }
+
+        /// <summary>
+        ///     Creates a job store using a preconfigured database when no ConnectionString is configured.
+        ///     An explicitly configured ConnectionString takes precedence.
+        ///     The database and its client remain owned by the caller.
+        /// </summary>
+        public MongoDbJobStore(IMongoDatabase database) : this()
+        {
+            _providedDatabase = database ?? throw new ArgumentNullException(nameof(database));
         }
 
         public string ConnectionString { get; set; }
@@ -124,9 +135,17 @@ namespace Quartz.Spi.MongoDbJobStore
             _schedulerId = new SchedulerId(InstanceId, InstanceName);
             Log.Trace($"Scheduler {_schedulerId} initialize");
 
-            var url = new MongoUrl(ConnectionString);
-            _client = new MongoClient(ConnectionString);
-            _database = _client.GetDatabase(url.DatabaseName);
+            if (string.IsNullOrEmpty(ConnectionString) && _providedDatabase != null)
+            {
+                _database = _providedDatabase;
+            }
+            else
+            {
+                var url = new MongoUrl(ConnectionString);
+                _client = new MongoClient(ConnectionString);
+                _database = _client.GetDatabase(url.DatabaseName);
+            }
+
             _lockManager = new LockManager(_database, InstanceName, CollectionPrefix);
             _schedulerRepository = new SchedulerRepository(_database, InstanceName, CollectionPrefix);
             _jobDetailRepository = new JobDetailRepository(_database, InstanceName, CollectionPrefix);
